@@ -15,7 +15,6 @@
 #define Num_Of_Level 5
 #define Max_Per_Level 20
 
-// Generate random number
 int randomNumber()
 {
     // Get random number
@@ -23,8 +22,7 @@ int randomNumber()
 
     return random;
 }
-
-// Import plates from file
+// Import plates
 FILE *importPlates()
 {
 
@@ -37,7 +35,7 @@ FILE *importPlates()
     return plates;
 }
 
-// Number plate generator - 50/50 from list or random
+// Number plate generator
 char *generateNumberPlate(FILE *plates)
 {
 
@@ -55,7 +53,7 @@ char *generateNumberPlate(FILE *plates)
         int counter = 0;
 
         // String in progress
-        char *numberPlate = malloc(sizeof(char) * 7);
+        char *numberPlate = (char *)malloc(sizeof(char) * 7);
 
         // Loop through all characters in plates
         for (char c = getc(plates); c != EOF; c = getc(plates))
@@ -96,7 +94,7 @@ char *generateNumberPlate(FILE *plates)
         int numEnd = 57;
 
         // Init number plate
-        char *numberPlate = malloc(6 * sizeof(int));
+        char *numberPlate = (char *)malloc(6 * sizeof(int));
 
         // Numbers for the first 3
         for (int i = 0; i < 3; i++)
@@ -114,15 +112,3 @@ char *generateNumberPlate(FILE *plates)
         return (numberPlate);
     }
 };
-
-int main()
-{
-    // Init for random numbers
-    time_t t1;
-    srand((unsigned)time(&t1)); // pass the srand() parameter
-
-    FILE *plates = importPlates();
-
-    // Generate license plates
-    printf("%s\n", generateNumberPlate(plates));
-}
