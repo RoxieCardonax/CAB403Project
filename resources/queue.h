@@ -104,7 +104,7 @@ void addToQueue(queue *queue, char *newData)
     item *temp;
 
     // Allocate memory for temp
-    temp = malloc(sizeof(item));
+    temp = (item *)malloc(sizeof(item));
 
     // Assign new value temp
     temp->data = newData;
@@ -160,7 +160,7 @@ char *removeFromQueue(queue *queue)
 int main()
 {
     queue *q;
-    q = malloc(sizeof(queue));
+    q = (queue *)malloc(sizeof(queue));
     initQueue(q);
     addToQueue(q, "Hello");
     addToQueue(q, "There");
