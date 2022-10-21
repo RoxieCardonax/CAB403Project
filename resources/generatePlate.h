@@ -22,8 +22,9 @@ int randomNumber()
 
     return random;
 }
-// Import plates
-FILE *importPlates()
+
+// Number plate generator
+const char *generateNumberPlate()
 {
 
     // Get file pointer
@@ -32,15 +33,9 @@ FILE *importPlates()
     // Open file
     plates = fopen("./resources/plates.txt", "r");
 
-    return plates;
-}
-
-// Number plate generator
-const char *generateNumberPlate(FILE *plates)
-{
-
     // Random numbe for testing
     int rand = randomNumber();
+
     // 50/50 whether car from list
     if (rand % 2 == 0)
     {
@@ -48,16 +43,19 @@ const char *generateNumberPlate(FILE *plates)
         // Pick from list
         // Get random number under 100
         rand = randomNumber() % 100;
-
         // Counter for choosing random plate from  file
         int counter = 0;
         int charCounter = 0;
         // String in progress
         char *numberPlate = (char *)malloc(sizeof(char) * 7);
 
-        // Loop through all characters in plates
+        // // Loop through all characters in plates
         for (char c = getc(plates); c != EOF; c = getc(plates))
         {
+
+            // Get number of chars
+            charCounter++;
+
             // If not new line char, add to string
             if (c != '\n')
             {
@@ -81,6 +79,10 @@ const char *generateNumberPlate(FILE *plates)
                 memset(numberPlate, 0, sizeof(numberPlate));
             }
         }
+
+        // Close connection and free memory
+        fclose(plates);
+        free(plates);
     }
     else
     {
