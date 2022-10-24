@@ -16,8 +16,7 @@
 #define Max_Per_Level 20
 
 int randomNumber()
-{
-    // Get random number
+{ // Get random number
     int random = rand();
 
     return random;
