@@ -23,7 +23,7 @@
 	88 + 288 - LPR Values
 	96 + 288 - Mutex_t Boomgate
 	136 + 288 - Mutex Condition Boomgate
-	184 + 288 - Status BoomGate		
+	184 + 288 - Status BoomGate
 	192 + 288 pthread_mutex_t for information sign
 	232 + 288 pthread_cond_t for information sign
 	280 + 288 character display for information sign

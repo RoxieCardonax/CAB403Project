@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "generateplate.h": "c"
+        "generateplate.h": "c",
+        "queue.h": "c",
+        "hashtable.h": "c"
     }
 }
