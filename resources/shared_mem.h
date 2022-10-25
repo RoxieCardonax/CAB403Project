@@ -10,6 +10,13 @@
 // shm->exit[ExitNum].variable     Where Exit Num is 0-4 for Exit 1-5 respectively
 // shm->level[LevelNum].variable     Where LevelNum is 0-4 for Level 1-5 respectively
 
+/////////////////USING THE SRUCTURES TO GET ADDRESS//////////////////////////////
+
+// &shm->entry[EntryNum].variable     Where EntryNum is 0-4 for Entry 1-5 respectively
+// &shm->exit[ExitNum].variable     Where Exit Num is 0-4 for Exit 1-5 respectively
+// &shm->level[LevelNum].variable     Where LevelNum is 0-4 for Level 1-5 respectively
+
+
 ////////////////USING ADDRESSES DIRECTLY TO GET ADDRESS///////////////////////////////
 
 // char *addr = (CastTypeHere *)shm + offset * NUM              WHERE NUM is Entry/Exit/Level NUM 0-4
@@ -113,5 +120,7 @@ typedef struct shared_data
 	levels_t levels[Num_Of_Level];
 
 } parking_data_t;
+
+
 
 #endif

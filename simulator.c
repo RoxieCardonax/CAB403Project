@@ -15,40 +15,88 @@
 int fd;
 parking_data_t *shm; // Initilize Shared Memory Segment
 
-void* runEntryBG(void* arg)
+void *runEntryBG(void *arg)
 {
     int num = *(int *)arg;
-   //Wait on Boomgate Value to open
-   //Get Mutex lock for boomgate number
-        //Wait for conidtion of boomgate
-        //Change Value of boomgate status
-        //It then unlocks the mutex
-        //Broadcast to other mutexs on other threads waiting on thie mustx
-   //  
-    printf("Locking Mutex at: EntranceBG '%d'\n",num +1);
-    //pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
-    printf("Status at: EntranceBG '%c'\n\n",shm->entrys[num].boomgate);
-    //pthread_mutex_unlock(&shm->entrys[num].boomgate_mutex);
+    // Wait on Boomgate Value to open
+    // Get Mutex lock for boomgate number
+    // Wait for conidtion of boomgate
+    // Change Value of boomgate status
+    // It then unlocks the mutex
+    // Broadcast to other mutexs on other threads waiting on thie mustx
+    //
+    printf("Locking Mutex at: EntranceBG '%d'\n", num + 1);
+    // pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
+    printf("Status at Entrance BG '%d': '%c'\n\n", num + 1, shm->entrys[num].boomgate);
+    // pthread_mutex_unlock(&shm->entrys[num].boomgate_mutex);
     free(arg);
 }
 
-void* runExitBG(void* arg)
+void *runExitBG(void *arg)
 {
     int num = *(int *)arg;
-   //Wait on Boomgate Value to open
-   //Get Mutex lock for boomgate number
-        //Wait for conidtion of boomgate
-        //Change Value of boomgate status
-        //It then unlocks the mutex
-        //Broadcast to other mutexs on other threads waiting on thie mustx
-   //  
-    printf("Locking Mutex at: ExitBG '%d'\n",num +1);
-    //pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
-    printf("Status: '%c'\n\n",shm->exits[num].boomgate);
+    // Wait on Boomgate Value to open
+    // Get Mutex lock for boomgate number
+    // Wait for conidtion of boomgate
+    // Change Value of boomgate status
+    // It then unlocks the mutex
+    // Broadcast to other mutexs on other threads waiting on thie mustx
+    //
+    printf("Locking Mutex at: ExitBG '%d'\n", num + 1);
+    // pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
+    printf("Status at Exit BG '%d': '%c'\n\n", num + 1, shm->exits[num].boomgate);
 
     free(arg);
 }
 
+void setDefaultValues(parking_data_t *shm)
+{
+    // Set Up Mutex/Condition Variables
+
+    pthread_mutexattr_t mta;
+    pthread_condattr_t cta;
+    pthread_mutexattr_setpshared(&mta, PTHREAD_PROCESS_SHARED);
+    pthread_condattr_setpshared(&cta, PTHREAD_PROCESS_SHARED);
+
+    // Entries
+    for (int i = 0; i < Num_Of_Entries; i++)
+    {
+        // BoomGate
+        pthread_mutex_init(&shm->entrys[i].boomgate_mutex, &mta);
+        pthread_cond_init(&shm->entrys[i].boomgate_cond, &cta);
+        shm->entrys[i].boomgate = 'C'; // Set deault gate to closed.
+
+        // LPR
+        pthread_mutex_init(&shm->entrys[i].LPR_mutex, &mta);
+        pthread_cond_init(&shm->entrys[i].LPR_cond, &cta);
+
+        // Information Sign
+        pthread_mutex_init(&shm->entrys[i].info_mutex, &mta);
+        pthread_cond_init(&shm->entrys[i].info_cond, &cta);
+    }
+
+    // Exits
+    for (int i = 0; i < Num_Of_Exits; i++)
+    {
+        // BoomGate
+        pthread_mutex_init(&shm->exits[i].boomgate_mutex, &mta);
+        pthread_cond_init(&shm->exits[i].boomgate_cond, &cta);
+        shm->exits[i].boomgate = 'C'; // Set deault gate to closed.
+
+        // LPR
+        pthread_mutex_init(&shm->exits[i].LPR_mutex, &mta);
+        pthread_cond_init(&shm->exits[i].LPR_cond, &cta);
+    }
+
+    // Level
+    for (int i = 0; i < Num_Of_Level; i++)
+    {
+        // LPR
+        pthread_mutex_init(&shm->levels[i].LPR_mutex, &mta);
+        pthread_cond_init(&shm->levels[i].LPR_cond, &cta);
+    }
+    printf("All mutexes created.\n");
+}
 
 void createBoomGateThreads(parking_data_t *shm, pthread_t *threads)
 {
@@ -109,25 +157,22 @@ void *create_shared_memory(parking_data_t *shm)
     return shm;
 }
 
-
-
-
 int main()
 {
 
     parking_data_t parking; // Initilize parking segment
-    
 
     // Map Parking Segment to Memory and retrive address.
     shm = create_shared_memory(&parking);
 
     // USED TO TEST AND VALIDATE MEMORY SEGMENT
     // testSegment(shm);
-    shm->entrys[0].boomgate = 'C';
+
+    // Initialise Mutex/Condition Variables and Set Default Values for Shared Memory
+    setDefaultValues(shm);
 
     // Create BoomGate Threads
     pthread_t *threads = malloc(sizeof(pthread_t) * (Num_Of_Entries + Num_Of_Exits));
-
     createBoomGateThreads(shm, threads);
 
     // Clean Up Threads and Shared Memory Mapping
