@@ -15,89 +15,100 @@
 int fd;
 parking_data_t *shm; // Initilize Shared Memory Segment
 
+// BoomGate Entrance Operations
 void *runEntryBG(void *arg)
 {
-    int num = *(int *)arg;
-    // Wait on Boomgate Value to open
-    // Get Mutex lock for boomgate number
-    // Wait for conidtion of boomgate
-    // Change Value of boomgate status
-    // It then unlocks the mutex
-    // Broadcast to other mutexs on other threads waiting on thie mustx
-    //
-    printf("Locking Mutex at: EntranceBG '%d'\n", num + 1);
-    // pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
-    printf("Status at Entrance BG '%d': '%c'\n\n", num + 1, shm->entrys[num].boomgate);
-    // pthread_mutex_unlock(&shm->entrys[num].boomgate_mutex);
+    int num = *(int *)arg; // ENTRANCE NUM
+
+    for (;;)
+
+    {
+        pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
+        pthread_cond_wait(&shm->entrys[num].boomgate_cond, &shm->entrys[num].boomgate_mutex);
+
+        // Boom Gate Rising.
+        if (shm->entrys[num].boomgate == 'R')
+        {
+
+            printf("Boomgate at EntranceBG '%d' is Rising...\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            sleep(2); // Change to 10ms to open gate
+
+            // SET BOOMGATE TO OPEN
+            shm->entrys[num].boomgate = 'O';
+            printf("Boomgate at EntranceBG '%d' is Opened\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            pthread_cond_broadcast(&shm->entrys[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->entrys[num].boomgate_mutex);
+        }
+
+        // Boom Gate Lowering
+        if (shm->entrys[num].boomgate == 'L')
+        {
+            printf("Boomgate at EntranceBG '%d' is Lowering...\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            sleep(2); // Change to 10ms to open and close gate
+
+            // SET BOOMGATE TO CLOSED
+            shm->entrys[num].boomgate = 'C';
+            printf("Boomgate at EntranceBG '%d' is Closed...\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            pthread_cond_broadcast(&shm->entrys[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->entrys[num].boomgate_mutex);
+        }
+    }
+
     free(arg);
 }
 
+// BoomGate Exit Operations
 void *runExitBG(void *arg)
 {
-    int num = *(int *)arg;
-    // Wait on Boomgate Value to open
-    // Get Mutex lock for boomgate number
-    // Wait for conidtion of boomgate
-    // Change Value of boomgate status
-    // It then unlocks the mutex
-    // Broadcast to other mutexs on other threads waiting on thie mustx
-    //
-    printf("Locking Mutex at: ExitBG '%d'\n", num + 1);
-    // pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
-    printf("Status at Exit BG '%d': '%c'\n\n", num + 1, shm->exits[num].boomgate);
+    int num = *(int *)arg; // EXIT NUM
+
+    for (;;)
+
+    {
+        pthread_mutex_lock(&shm->exits[num].boomgate_mutex);
+        pthread_cond_wait(&shm->exits[num].boomgate_cond, &shm->exits[num].boomgate_mutex);
+
+        // Boom Gate Rising.
+        if (shm->exits[num].boomgate == 'R')
+        {
+
+            printf("Boomgate at ExitBG '%d' is Rising...\n", num + 1);
+            printf("Status of Exit BG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            sleep(2); // Change to 10ms to open gate
+
+            // SET BOOMGATE TO OPEN
+            shm->exits[num].boomgate = 'O';
+            printf("Boomgate at ExitBG '%d' is Opened\n", num + 1);
+            printf("Status of ExitBG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            pthread_cond_broadcast(&shm->exits[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->exits[num].boomgate_mutex);
+        }
+
+        // Boom Gate Lowering
+        if (shm->exits[num].boomgate == 'L')
+        {
+            printf("Boomgate at ExitBG '%d' is Lowering...\n", num + 1);
+            printf("Status of ExitBG BG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            sleep(2); // Change to 10ms to open and close gate
+
+            // SET BOOMGATE TO CLOSED
+            shm->exits[num].boomgate = 'C';
+            printf("Boomgate at ExitBG '%d' is Closed...\n", num + 1);
+            printf("Status of ExitBG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            pthread_cond_broadcast(&shm->exits[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->exits[num].boomgate_mutex);
+        }
+    }
 
     free(arg);
 }
 
-void setDefaultValues(parking_data_t *shm)
-{
-    // Set Up Mutex/Condition Variables
 
-    pthread_mutexattr_t mta;
-    pthread_condattr_t cta;
-    pthread_mutexattr_setpshared(&mta, PTHREAD_PROCESS_SHARED);
-    pthread_condattr_setpshared(&cta, PTHREAD_PROCESS_SHARED);
-
-    // Entries
-    for (int i = 0; i < Num_Of_Entries; i++)
-    {
-        // BoomGate
-        pthread_mutex_init(&shm->entrys[i].boomgate_mutex, &mta);
-        pthread_cond_init(&shm->entrys[i].boomgate_cond, &cta);
-        shm->entrys[i].boomgate = 'C'; // Set deault gate to closed.
-
-        // LPR
-        pthread_mutex_init(&shm->entrys[i].LPR_mutex, &mta);
-        pthread_cond_init(&shm->entrys[i].LPR_cond, &cta);
-
-        // Information Sign
-        pthread_mutex_init(&shm->entrys[i].info_mutex, &mta);
-        pthread_cond_init(&shm->entrys[i].info_cond, &cta);
-    }
-
-    // Exits
-    for (int i = 0; i < Num_Of_Exits; i++)
-    {
-        // BoomGate
-        pthread_mutex_init(&shm->exits[i].boomgate_mutex, &mta);
-        pthread_cond_init(&shm->exits[i].boomgate_cond, &cta);
-        shm->exits[i].boomgate = 'C'; // Set deault gate to closed.
-
-        // LPR
-        pthread_mutex_init(&shm->exits[i].LPR_mutex, &mta);
-        pthread_cond_init(&shm->exits[i].LPR_cond, &cta);
-    }
-
-    // Level
-    for (int i = 0; i < Num_Of_Level; i++)
-    {
-        // LPR
-        pthread_mutex_init(&shm->levels[i].LPR_mutex, &mta);
-        pthread_cond_init(&shm->levels[i].LPR_cond, &cta);
-    }
-    printf("All mutexes created.\n");
-}
-
+//Initilise Boomgate Threads
 void createBoomGateThreads(parking_data_t *shm, pthread_t *threads)
 {
     for (int i = 0; i < Num_Of_Entries; i++)

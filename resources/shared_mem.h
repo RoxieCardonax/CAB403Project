@@ -16,7 +16,6 @@
 // &shm->exit[ExitNum].variable     Where Exit Num is 0-4 for Exit 1-5 respectively
 // &shm->level[LevelNum].variable     Where LevelNum is 0-4 for Level 1-5 respectively
 
-
 ////////////////USING ADDRESSES DIRECTLY TO GET ADDRESS///////////////////////////////
 
 // char *addr = (CastTypeHere *)shm + offset * NUM              WHERE NUM is Entry/Exit/Level NUM 0-4
@@ -30,7 +29,7 @@
 	88 + 288 - LPR Values
 	96 + 288 - Mutex_t Boomgate
 	136 + 288 - Mutex Condition Boomgate
-	184 + 288 - Status BoomGate		
+	184 + 288 - Status BoomGate
 	192 + 288 pthread_mutex_t for information sign
 	232 + 288 pthread_cond_t for information sign
 	280 + 288 character display for information sign
@@ -101,9 +100,6 @@ typedef struct levels
 	char padding[5];
 } levels_t;
 
-
-
-
 /**
  * Parking Data Block
  */
@@ -121,6 +117,53 @@ typedef struct shared_data
 
 } parking_data_t;
 
+// Set Up Mutex/Condition Variables By Default
+void setDefaultValues(parking_data_t *shm)
+{
 
+	pthread_mutexattr_t mta;
+	pthread_condattr_t cta;
+	pthread_mutexattr_setpshared(&mta, PTHREAD_PROCESS_SHARED);
+	pthread_condattr_setpshared(&cta, PTHREAD_PROCESS_SHARED);
+
+	// Entries
+	for (int i = 0; i < Num_Of_Entries; i++)
+	{
+		// BoomGate
+		pthread_mutex_init(&shm->entrys[i].boomgate_mutex, &mta);
+		pthread_cond_init(&shm->entrys[i].boomgate_cond, &cta);
+		shm->entrys[i].boomgate = 'C'; // Set default gate to closed.
+
+		// LPR
+		pthread_mutex_init(&shm->entrys[i].LPR_mutex, &mta);
+		pthread_cond_init(&shm->entrys[i].LPR_cond, &cta);
+
+		// Information Sign
+		pthread_mutex_init(&shm->entrys[i].info_mutex, &mta);
+		pthread_cond_init(&shm->entrys[i].info_cond, &cta);
+	}
+
+	// Exits
+	for (int i = 0; i < Num_Of_Exits; i++)
+	{
+		// BoomGate
+		pthread_mutex_init(&shm->exits[i].boomgate_mutex, &mta);
+		pthread_cond_init(&shm->exits[i].boomgate_cond, &cta);
+		shm->exits[i].boomgate = 'C'; // Set default gate to closed.
+
+		// LPR
+		pthread_mutex_init(&shm->exits[i].LPR_mutex, &mta);
+		pthread_cond_init(&shm->exits[i].LPR_cond, &cta);
+	}
+
+	// Level
+	for (int i = 0; i < Num_Of_Level; i++)
+	{
+		// LPR
+		pthread_mutex_init(&shm->levels[i].LPR_mutex, &mta);
+		pthread_cond_init(&shm->levels[i].LPR_cond, &cta);
+	}
+	printf("All mutexes created.\n");
+}
 
 #endif
