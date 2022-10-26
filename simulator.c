@@ -15,32 +15,128 @@
 #include "resources/queue.h"
 #include "resources/generatePlate.h"
 #include "resources/hashTable.h"
+#include "resources/generatePlate.h"
+#include "resources/hashTable.h"
+#include <stdio.h>
+#include "resources/test.h"
 
 int fd;
+parking_data_t *shm; // Initilize Shared Memory Segment
 
-void testSegment(parking_data_t *shm)
+// BoomGate Entrance Operations
+void *runEntryBG(void *arg)
 {
-    printf("SIZE OF  ENTRY VALUE %ld\n", sizeof(entrys_t));       // Check size of entrys
-    printf("SIZE OF  EXIT VALUE %ld\n", sizeof(exits_t));         // Check size of exits
-    printf("SIZE OF  LEVEL VALUE %ld\n", sizeof(levels_t));       // Check size of levels
-    printf("SIZE OF  PARKING SEGMENT VALUE %ld\n", sizeof(*shm)); // Check size of memory segment
+    int num = *(int *)arg; // ENTRANCE NUM
 
-    /* //Test Directly Accessing Entrance Boomgate Value to address
-    char *c = (char*)shm + 184;
-    *c = 'c';
-     printf("TEST%p\n",c);
+    for (;;)
 
-    //est Using pointers to assign Entrance Boomgate Value to address
-     shm->entrys[0].boomgate = 'A'; */
+    {
+        pthread_mutex_lock(&shm->entrys[num].boomgate_mutex);
+        pthread_cond_wait(&shm->entrys[num].boomgate_cond, &shm->entrys[num].boomgate_mutex);
 
-    // Check Structs are mapped correctly in memory
-    printf("MEMORY ADDRESS OF SHM + 184: %p\n", (char *)(shm + 184)); // Memory address of Entrance 1 boomgate
+        // Boom Gate Rising.
+        if (shm->entrys[num].boomgate == 'R')
+        {
 
-    // Wait for Manager to change value
-    // while (shm->exits[1].boomgate != 'C')
-    // sleep;
+            printf("Boomgate at EntranceBG '%d' is Rising...\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            sleep(2); // Change to 10ms to open gate
 
-    printf("SHM VALUE Returned %c\n", shm->entrys[1].boomgate); // Print Value
+            // SET BOOMGATE TO OPEN
+            shm->entrys[num].boomgate = 'O';
+            printf("Boomgate at EntranceBG '%d' is Opened\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            pthread_cond_broadcast(&shm->entrys[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->entrys[num].boomgate_mutex);
+        }
+
+        // Boom Gate Lowering
+        if (shm->entrys[num].boomgate == 'L')
+        {
+            printf("Boomgate at EntranceBG '%d' is Lowering...\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            sleep(2); // Change to 10ms to open and close gate
+
+            // SET BOOMGATE TO CLOSED
+            shm->entrys[num].boomgate = 'C';
+            printf("Boomgate at EntranceBG '%d' is Closed...\n", num + 1);
+            printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
+            pthread_cond_broadcast(&shm->entrys[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->entrys[num].boomgate_mutex);
+        }
+    }
+
+    free(arg);
+}
+
+// BoomGate Exit Operations
+void *runExitBG(void *arg)
+{
+    int num = *(int *)arg; // EXIT NUM
+
+    for (;;)
+
+    {
+        pthread_mutex_lock(&shm->exits[num].boomgate_mutex);
+        pthread_cond_wait(&shm->exits[num].boomgate_cond, &shm->exits[num].boomgate_mutex);
+
+        // Boom Gate Rising.
+        if (shm->exits[num].boomgate == 'R')
+        {
+
+            printf("Boomgate at ExitBG '%d' is Rising...\n", num + 1);
+            printf("Status of Exit BG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            sleep(2); // Change to 10ms to open gate
+
+            // SET BOOMGATE TO OPEN
+            shm->exits[num].boomgate = 'O';
+            printf("Boomgate at ExitBG '%d' is Opened\n", num + 1);
+            printf("Status of ExitBG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            pthread_cond_broadcast(&shm->exits[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->exits[num].boomgate_mutex);
+        }
+
+        // Boom Gate Lowering
+        if (shm->exits[num].boomgate == 'L')
+        {
+            printf("Boomgate at ExitBG '%d' is Lowering...\n", num + 1);
+            printf("Status of ExitBG BG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            sleep(2); // Change to 10ms to open and close gate
+
+            // SET BOOMGATE TO CLOSED
+            shm->exits[num].boomgate = 'C';
+            printf("Boomgate at ExitBG '%d' is Closed...\n", num + 1);
+            printf("Status of ExitBG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
+            pthread_cond_broadcast(&shm->exits[num].boomgate_cond);
+            pthread_mutex_unlock(&shm->exits[num].boomgate_mutex);
+        }
+    }
+
+    free(arg);
+}
+
+// Initilise Boomgate Threads
+void createBoomGateThreads(parking_data_t *shm, pthread_t *threads)
+{
+    for (int i = 0; i < Num_Of_Entries; i++)
+    {
+        int *entNum = malloc(sizeof(int));
+        *entNum = i;
+        if (pthread_create(threads + i, NULL, runEntryBG, entNum) != 0)
+        {
+            printf("Error, could not create thread for boomgate.");
+        };
+    }
+
+    for (int i = 0; i < Num_Of_Exits; i++)
+    {
+        int *extNum = malloc(sizeof(int));
+        *extNum = i;
+        if (pthread_create(threads + Num_Of_Entries + i, NULL, runExitBG, extNum) != 0)
+        {
+            printf("Error, could not create thread for boomgate.");
+        };
+    }
 }
 
 // Create Shared Memory segment on startup.
@@ -61,13 +157,13 @@ void *create_shared_memory(parking_data_t *shm)
     fd = open;
 
     // Configure the size of the memory segment to 2920 bytes
-    if (ftruncate(fd, sizeof(parking_data_t)) == -1)
+    if (ftruncate(fd, SHMSZ) == -1)
     {
         printf("Failed to set capacity of memory segment");
     };
 
     // Map memory segment to pysical address
-    shm = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    shm = mmap(NULL, SHMSZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     if (shm == MAP_FAILED)
     {
@@ -179,7 +275,6 @@ int main()
     queue queues[] = {*q1, *q2, *q3, *q4, *q5};
 
     parking_data_t parking; // Initilize parking segment
-    parking_data_t *shm;    // Holds Mapped Shm Address
 
     // Create thread for adding cars to queues
     pthread_t spawn_car_thread;
@@ -187,8 +282,9 @@ int main()
     // Map Parking Segment to Memory and retrive address.
     shm = create_shared_memory(&parking);
 
-    // USED TO TEST AND VALIDATE MEMORY SEGMENT
-    // testSegment(shm);
+    // Initialise Mutex/Condition Variables and Set Default Values for Shared Memory
+    setDefaultValues(shm);
+   
     // Create thread
     pthread_create(&spawn_car_thread, NULL, spawn_cars, NULL);
     if (pthread_create(&spawn_car_thread, NULL, spawn_cars, NULL) != 0)
@@ -203,6 +299,18 @@ int main()
     // pthread_join(spawn_car_thread, NULL);
 
     // Close shared memory
+
+    
+    // Create BoomGate Threads
+    pthread_t *threads = malloc(sizeof(pthread_t) * (Num_Of_Entries + Num_Of_Exits));
+    createBoomGateThreads(shm, threads);
+
+    // Clean Up Threads and Shared Memory Mapping
+    for (int i = 0; i < Num_Of_Entries + Num_Of_Exits; i++)
+    {
+        pthread_join(threads[i], NULL);
+    }
+
     if ((munmap(shm, SHMSZ)) == -1)
     {
         perror("munmap failed");
