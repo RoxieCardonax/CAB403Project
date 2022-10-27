@@ -174,7 +174,7 @@ void htable_delete(htable_t *hashTable, char *plate)
 
             // Free allocated memory
             free(current);
-            free(*plate);
+            free(plate);
             break;
         }
 

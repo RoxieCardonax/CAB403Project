@@ -52,9 +52,9 @@ void initQueue(queue *queue)
 
     // Set variables to 0 and NULL
 
-    queue->rear = NULL;
+    queue->rear = malloc(sizeof(queue));
 
-    queue->front = NULL;
+    queue->front = malloc(sizeof(queue));
 
     queue->count = 0;
 }
@@ -64,8 +64,6 @@ void initQueue(queue *queue)
 int isEmpty(queue *queue)
 
 {
-
-    printf("This is bad");
 
     // return value based on count
 
@@ -128,7 +126,7 @@ void addToQueue(queue *queue, char *newData)
 
     temp = (item *)malloc(sizeof(item));
 
-    temp->data = malloc(sizeof(char) * 7);
+    temp->data = malloc(sizeof(char) * 6);
 
     temp->next = malloc(sizeof(item));
 
@@ -173,51 +171,59 @@ void addToQueue(queue *queue, char *newData)
 
 // Remove item from queue
 
-char *removeFromQueue(queue *queue)
+char *removeFromQueue(queue *queuePointer)
 
 {
 
-    if (!isEmpty(queue))
+    queue *q = queuePointer;
+
+    if (!isEmpty(q))
     {
 
         // Get item to be removed pointer to free
 
         item *removedItem = malloc(sizeof(item));
 
-        char *removedData = malloc(sizeof(char) * 7);
+        char *removedData = malloc(sizeof(char) * 6);
 
         // Get char array to return
 
-        removedItem = queue->front;
+        removedItem = q->front;
 
-        if (queue->count == 1)
+        if (q->count == 1)
         {
 
-            queue->front = NULL;
+            q->front = NULL;
 
             // Take 1 away from count
 
-            free(removedItem);
+            // free(removedItem);
 
-            queue->count--;
+            removedData = removedItem->data;
+
+            q->count--;
         }
         else
         {
 
             // Move queue
 
-            queue->front = removedItem->next;
+            q->front = removedItem->next;
 
             // Take 1 away from count
 
-            free(removedItem);
+            removedData = removedItem->data;
 
-            queue->count--;
+            q->count--;
         }
+
+        printf("\n%s\n", removedData);
 
         // Return char array from deallocated data
 
         return removedData;
+
+        free(removedItem);
     }
     else
     {
