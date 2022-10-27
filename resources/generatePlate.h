@@ -1,7 +1,3 @@
-#ifndef GENERATE_PLATE
-#define GENERATE_PLATE
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -131,11 +127,5 @@ char *generateNumberPlate()
         // Memory needs to be freed when car leaves
         return (numberPlate);
     }
-<<<<<<< HEAD
     return NULL;
 };
-=======
-};
-
-#endif
->>>>>>> master

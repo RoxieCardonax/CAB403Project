@@ -1,6 +1,3 @@
-#ifndef HASH_TABLE
-#define HASH_TABLE
-
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -225,5 +222,3 @@ void htable_search_value(htable_t *hashTable, char *search)
     }
     printf("\n");
 }
-
-#endif
