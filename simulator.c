@@ -19,9 +19,17 @@
 #include "resources/hashTable.h"
 #include <stdio.h>
 #include "resources/test.h"
+#include <time.h>
 
 int fd;
 parking_data_t *shm; // Initilize Shared Memory Segment
+
+// Function Help from https://qnaplus.com/c-program-to-sleep-in-milliseconds/ Author: Srikanta
+// Input microseconds
+int threadSleep(long tms)
+{
+    usleep(tms * 1000);
+}
 
 // BoomGate Entrance Operations
 void *runEntryBG(void *arg)
@@ -40,7 +48,7 @@ void *runEntryBG(void *arg)
 
             printf("Boomgate at EntranceBG '%d' is Rising...\n", num + 1);
             printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
-            sleep(2); // Change to 10ms to open gate
+            threadSleep(10); // Wait 10ms for gate to open
 
             // SET BOOMGATE TO OPEN
             shm->entrys[num].boomgate = 'O';
@@ -55,7 +63,7 @@ void *runEntryBG(void *arg)
         {
             printf("Boomgate at EntranceBG '%d' is Lowering...\n", num + 1);
             printf("Status of Entrance BG: %d is %c \n\n ", num + 1, shm->entrys[num].boomgate);
-            sleep(2); // Change to 10ms to open and close gate
+            threadSleep(10); // Wait 10ms for gate to close
 
             // SET BOOMGATE TO CLOSED
             shm->entrys[num].boomgate = 'C';
@@ -78,15 +86,17 @@ void *runExitBG(void *arg)
 
     {
         pthread_mutex_lock(&shm->exits[num].boomgate_mutex);
-        pthread_cond_wait(&shm->exits[num].boomgate_cond, &shm->exits[num].boomgate_mutex);
-
         // Boom Gate Rising.
+        while (shm->exits[num].boomgate == 'C' || shm->exits[num].boomgate == 'O')
+        {
+            pthread_cond_wait(&shm->exits[num].boomgate_cond, &shm->exits[num].boomgate_mutex);
+        }
         if (shm->exits[num].boomgate == 'R')
         {
 
             printf("Boomgate at ExitBG '%d' is Rising...\n", num + 1);
             printf("Status of Exit BG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
-            sleep(2); // Change to 10ms to open gate
+            threadSleep(1000); // Wait 10ms for gate to open
 
             // SET BOOMGATE TO OPEN
             shm->exits[num].boomgate = 'O';
@@ -95,13 +105,12 @@ void *runExitBG(void *arg)
             pthread_cond_broadcast(&shm->exits[num].boomgate_cond);
             pthread_mutex_unlock(&shm->exits[num].boomgate_mutex);
         }
-
         // Boom Gate Lowering
         if (shm->exits[num].boomgate == 'L')
         {
             printf("Boomgate at ExitBG '%d' is Lowering...\n", num + 1);
             printf("Status of ExitBG BG: %d is %c \n\n ", num + 1, shm->exits[num].boomgate);
-            sleep(2); // Change to 10ms to open and close gate
+            threadSleep(1000); // Wait 10ms for gate to close
 
             // SET BOOMGATE TO CLOSED
             shm->exits[num].boomgate = 'C';
@@ -212,7 +221,7 @@ void generateCarAtEntry(queue *queues)
     // Needs to be threaded/mutexed
     // TBD
     // Lock mutex
-    pthread_mutex_lock(&queues_mutex);
+    // pthread_mutex_lock(&queues_mutex);
     // Pick a queue
     int chosenQueue = randomNumber() % Num_Of_Entries;
 
@@ -220,7 +229,7 @@ void generateCarAtEntry(queue *queues)
     addToQueue((queue *)&queues[chosenQueue], generateNumberPlate());
 
     // Unlock mutex
-    pthread_mutex_unlock(&queues_mutex);
+    // pthread_mutex_unlock(&queues_mutex);
 }
 
 // Entry testing
@@ -265,6 +274,7 @@ void *spawn_cars(void *arg)
 }
 int main()
 {
+
     // Define Queue's
     queue *q1 = (queue *)malloc(sizeof(queue));
     queue *q2 = (queue *)malloc(sizeof(queue));
@@ -284,13 +294,13 @@ int main()
 
     // Initialise Mutex/Condition Variables and Set Default Values for Shared Memory
     setDefaultValues(shm);
-   
-    // Create thread
+
+    /* //Create thread
     pthread_create(&spawn_car_thread, NULL, spawn_cars, NULL);
     if (pthread_create(&spawn_car_thread, NULL, spawn_cars, NULL) != 0)
     {
         printf("Could not create thread");
-    }
+    }   */
 
     // Do it again bc why not
 
@@ -298,12 +308,22 @@ int main()
     // spawn_cars();
     // pthread_join(spawn_car_thread, NULL);
 
-    // Close shared memory
-
-    
     // Create BoomGate Threads
     pthread_t *threads = malloc(sizeof(pthread_t) * (Num_Of_Entries + Num_Of_Exits));
     createBoomGateThreads(shm, threads);
+
+    // Generate Random Temperature
+    // Helper Function from https://stackoverflow.com/questions/29381843/generate-random-number-in-range-min-max
+    srand(time(0));
+    for (;;)
+    {
+        threadSleep(1 + rand() % (5 + 1 - 1)); // New Temperature 1-5ms.
+        for (int i = 0; i < Num_Of_Level; i++)
+        {
+            int16_t temp = 18 + rand() % (50 + 1 - 18); // Calculate new temperature between 18C-50C.
+            shm->levels[i].temp = temp;                 // Set new temp to each level
+        }
+    }
 
     // Clean Up Threads and Shared Memory Mapping
     for (int i = 0; i < Num_Of_Entries + Num_Of_Exits; i++)
