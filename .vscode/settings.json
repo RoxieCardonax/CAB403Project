@@ -1,7 +1,9 @@
 {
-    "files.associations": {
-        "generateplate.h": "c",
-        "queue.h": "c",
-        "hashtable.h": "c"
-    }
+        "files.associations": {
+                "generateplate.h": "c",
+                "hashtable.h": "c",
+                "queue.h": "c",
+                "shared_mem.h": "c",
+                "spawn_cars.h": "c"
+        }
 }

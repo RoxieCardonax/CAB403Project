@@ -15,14 +15,13 @@
 #include "resources/queue.h"
 #include "resources/generatePlate.h"
 #include "resources/hashTable.h"
-#include "resources/generatePlate.h"
-#include "resources/hashTable.h"
-#include <stdio.h>
-#include "resources/test.h"
-#include <time.h>
 
 int fd;
 parking_data_t *shm; // Initilize Shared Memory Segment
+
+// Mutex for queues
+pthread_mutex_t queues_mutex;
+pthread_cond_t queues_cond;
 
 // Function Help from https://qnaplus.com/c-program-to-sleep-in-milliseconds/ Author: Srikanta
 // Input microseconds
@@ -30,6 +29,18 @@ int threadSleep(long tms)
 {
     usleep(tms * 1000);
 }
+
+// Thread information struct
+typedef struct thread_info
+{
+
+    queue *queues;
+
+    parking_data_t *shm;
+
+    int num;
+
+} thread_info_t;
 
 // BoomGate Entrance Operations
 void *runEntryBG(void *arg)
@@ -168,13 +179,13 @@ void *create_shared_memory(parking_data_t *shm)
     fd = open;
 
     // Configure the size of the memory segment to 2920 bytes
-    if (ftruncate(fd, SHMSZ) == -1)
+    if (ftruncate(fd, sizeof(parking_data_t)) == -1)
     {
         printf("Failed to set capacity of memory segment");
     };
 
     // Map memory segment to pysical address
-    shm = mmap(NULL, SHMSZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    shm = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     if (shm == MAP_FAILED)
     {
@@ -185,108 +196,108 @@ void *create_shared_memory(parking_data_t *shm)
 
     return shm;
 }
-
-// Initialize queue for each entrance
-queue *init_queues()
+// Listen to boomgates and remove from queue
+void *remove_from_entry_queue(void *args)
 {
-    // Init queue array
-    queue *queues = malloc(Num_Of_Entries * sizeof(queue *));
 
-    // Allocate memory and assign pointer to array
-    for (int i = 0; i < Num_Of_Entries; i++)
-    {
-        // Create queue
-        struct queue *newQueue = malloc(sizeof(queue));
-        newQueue->count = *(int *)malloc(sizeof(int));
-        newQueue->front = (item *)malloc(sizeof(item));
-        newQueue->rear = (item *)malloc(sizeof(item));
+    // Listen to boom gate cond
+    printf("\n\na threads\n\n");
 
-        // Initialize queue
-        initQueue(newQueue);
+    // Get info from args
+    queue *queues = ((thread_info_t *)args)->queues;
+    parking_data_t *shm = ((thread_info_t *)args)->shm;
+    int num = ((thread_info_t *)args)->num;
 
-        // Add queue to array
-        queues[i] = *newQueue;
-    };
+    free(args);
 
-    // Test initialization
-    if (queues[0].count != 0)
-    {
-        return NULL;
-    };
+    printf("ADDRESS OF PARKING %p\n", shm);
 
-    // Return pointer to start of array
-    return queues;
-}
-// Add number plate to random queue after certain amount of time
-void generateCarAtEntry(queue *queues)
-{
-    // Needs to be threaded/mutexed
-    // TBD
     // Lock mutex
-    // pthread_mutex_lock(&queues_mutex);
-    // Pick a queue
-    int chosenQueue = randomNumber() % Num_Of_Entries;
+    pthread_mutex_lock(&shm->entrys[num].LPR_mutex);
 
-    // Generate plate and add it to queue
-    addToQueue((queue *)&queues[chosenQueue], generateNumberPlate());
+    while (1)
+    {
 
-    // Unlock mutex
-    // pthread_mutex_unlock(&queues_mutex);
+        // Wait for LPR condition, unlock mutex until ready
+        pthread_cond_wait(&shm->entrys[num].LPR_cond, &shm->entrys[num].LPR_mutex);
+
+        // temp sleep
+        sleep(2);
+
+        // Allocate memory for removed car
+        char *removed = malloc(sizeof(char) * 6);
+
+        printf("%s", removeFromQueue(&queues[num]));
+
+        // Free conditional
+        pthread_cond_signal(&shm->entrys[num].LPR_cond);
+    }
 }
-
-// Entry testing
-void *testEntry(void *arg)
+// Spawn car thread
+void *spawn_cars(void *args)
 {
+
     // Create array of queues
-    queue *queues = init_queues();
+    queue *q = malloc(Num_Of_Entries * sizeof(*q));
 
-    // Loop through and add number
+    // Create queue's needed and boomgate listeners
     for (int i = 0; i < Num_Of_Entries; i++)
     {
-        printf("%d\ncount\n", queues[i].count);
-        generateCarAtEntry(queues);
-        printf("%d\nshouldbemore\n", queues[i].count);
-        showQueue(queues[i].front);
-    }
-    for (int i = 0; i < 5; i++)
-    {
-        printf("removbing");
-        while (!isEmpty((queue *)&queues[i]))
-        {
-            removeFromQueue((queue *)&queues[i]);
-        }
-    }
-    for (int i = 0; i < Num_Of_Entries; i++)
-    {
-        for (int j = 0; j < queues[i].count; i++)
-        {
-            printf("hello");
-            printf("%s", removeFromQueue(&queues[i]));
-        }
+
+        // Init queue in array
+        initQueue(&q[i]);
+
+        // Allocate memory for variables in struct
+        q[i].front = malloc(sizeof(item *));
+        q[i].rear = malloc(sizeof(item *));
+        q[i].count = *(int *)malloc(sizeof(int *));
+
+        // Create struct to pass to each thread
+        thread_info_t *ti = malloc(sizeof(thread_info_t));
+        ti->queues = q;
+        ti->shm = args;
+        ti->num = i;
+
+        // Init thread for listening to boom gates and removing
+        // from front of queue
+        pthread_t bg_listener_thread;
+
+        // Create thread for listening to LPR_cond variables
+        pthread_create(&bg_listener_thread, NULL, remove_from_entry_queue, ti);
     }
 
-    return NULL;
+    parking_data_t *shm = args;
+
+    // Loop constantly
+    while (1)
+    {
+        // Need to generate new car at random queue every 1-100ms
+        int interval = randomNumber();
+        int counter = 0;
+        // Sleep for millisecond (Keeps thread asleep majority of the time)
+        sleep(interval / 1000);
+
+        // Increase counter
+        counter++;
+
+        // Test to see if counter is at interval
+        if (counter == interval)
+        {
+            // Get number plate to add
+            char *numberPlate = generateNumberPlate();
+            // Time is at interval, span new car
+            addToQueue(&q[randomNumber() % 5], numberPlate);
+            pthread_cond_broadcast(&shm->entrys[randomNumber() % 5].LPR_cond);
+            counter = 0;
+        }
+    }
 }
-void *spawn_cars(void *arg)
-{
-    printf("\n\n\n%d\n\n\nhi");
-    testEntry(arg);
-    free(arg);
-    return NULL;
-}
+
 int main()
 {
 
-    // Define Queue's
-    queue *q1 = (queue *)malloc(sizeof(queue));
-    queue *q2 = (queue *)malloc(sizeof(queue));
-    queue *q3 = (queue *)malloc(sizeof(queue));
-    queue *q4 = (queue *)malloc(sizeof(queue));
-    queue *q5 = (queue *)malloc(sizeof(queue));
-
-    queue queues[] = {*q1, *q2, *q3, *q4, *q5};
-
     parking_data_t parking; // Initilize parking segment
+    parking_data_t *shm;    // Holds Mapped Shm Address
 
     // Create thread for adding cars to queues
     pthread_t spawn_car_thread;
@@ -294,25 +305,16 @@ int main()
     // Map Parking Segment to Memory and retrive address.
     shm = create_shared_memory(&parking);
 
-    // Initialise Mutex/Condition Variables and Set Default Values for Shared Memory
-    setDefaultValues(shm);
+    // USED TO TEST AND VALIDATE MEMORY SEGMENT
 
-    /* //Create thread
-    pthread_create(&spawn_car_thread, NULL, spawn_cars, NULL);
-    if (pthread_create(&spawn_car_thread, NULL, spawn_cars, NULL) != 0)
-    {
-        printf("Could not create thread");
-    }   */
-
-    // Do it again bc why not
-
-    // testEntry();
-    // spawn_cars();
-    // pthread_join(spawn_car_thread, NULL);
+    // Create thread for each entry
+    pthread_create(&spawn_car_thread, NULL, spawn_cars, shm);
 
     // Create BoomGate Threads
     pthread_t *threads = malloc(sizeof(pthread_t) * (Num_Of_Entries + Num_Of_Exits));
     createBoomGateThreads(shm, threads);
+
+    pthread_join(spawn_car_thread, NULL);
 
     // Generate Random Temperature
     // Helper Function from https://stackoverflow.com/questions/29381843/generate-random-number-in-range-min-max
