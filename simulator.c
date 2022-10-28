@@ -15,6 +15,7 @@
 #include "resources/queue.h"
 #include "resources/generatePlate.h"
 #include "resources/hashTable.h"
+#include <time.h>
 
 int fd;
 parking_data_t *shm; // Initilize Shared Memory Segment
@@ -25,7 +26,7 @@ pthread_cond_t queues_cond;
 
 // Function Help from https://qnaplus.com/c-program-to-sleep-in-milliseconds/ Author: Srikanta
 // Input microseconds
-int threadSleep(long tms)
+void threadSleep(long tms)
 {
     usleep(tms * 1000);
 }
@@ -179,13 +180,13 @@ void *create_shared_memory(parking_data_t *shm)
     fd = open;
 
     // Configure the size of the memory segment to 2920 bytes
-    if (ftruncate(fd, sizeof(parking_data_t)) == -1)
+    if (ftruncate(fd, SHMSZ) == -1)
     {
         printf("Failed to set capacity of memory segment");
     };
 
     // Map memory segment to pysical address
-    shm = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    shm = mmap(NULL, SHMSZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     if (shm == MAP_FAILED)
     {
@@ -297,7 +298,6 @@ int main()
 {
 
     parking_data_t parking; // Initilize parking segment
-    parking_data_t *shm;    // Holds Mapped Shm Address
 
     // Create thread for adding cars to queues
     pthread_t spawn_car_thread;
@@ -305,16 +305,15 @@ int main()
     // Map Parking Segment to Memory and retrive address.
     shm = create_shared_memory(&parking);
 
-    // USED TO TEST AND VALIDATE MEMORY SEGMENT
+    // Initialise Mutex/Condition Variables and Set Default Values for Shared Memory
+    setDefaultValues(shm);
 
     // Create thread for each entry
     pthread_create(&spawn_car_thread, NULL, spawn_cars, shm);
 
     // Create BoomGate Threads
-    pthread_t *threads = malloc(sizeof(pthread_t) * (Num_Of_Entries + Num_Of_Exits));
-    createBoomGateThreads(shm, threads);
-
-    pthread_join(spawn_car_thread, NULL);
+    pthread_t *BGthreads = malloc(sizeof(pthread_t) * (Num_Of_Entries + Num_Of_Exits));
+    createBoomGateThreads(shm, BGthreads);
 
     // Generate Random Temperature
     // Helper Function from https://stackoverflow.com/questions/29381843/generate-random-number-in-range-min-max
@@ -329,10 +328,14 @@ int main()
         }
     }
 
+    
     // Clean Up Threads and Shared Memory Mapping
+
+    pthread_join(spawn_car_thread, NULL);
+    
     for (int i = 0; i < Num_Of_Entries + Num_Of_Exits; i++)
     {
-        pthread_join(threads[i], NULL);
+        pthread_join(BGthreads[i], NULL);
     }
 
     if ((munmap(shm, SHMSZ)) == -1)

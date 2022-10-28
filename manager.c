@@ -92,7 +92,7 @@ int main()
     // Map Parking Segment to Memory and retrive address.
     shm = read_shared_memory(&parking);
 
-    /*  // USED TO DISPLAY STATUS
+     // USED TO DISPLAY STATUS
      for (;;)
      {
 
@@ -125,7 +125,7 @@ int main()
 
          threadSleep(50); // Updates Every 'x' amount of milliseconds
          system("clear");
-     } */
+     } 
 
     // USED TO TEST BOOMGATES. RUN THIS WITH SIM RUNNING ALREADY
     // testBoomgate();
