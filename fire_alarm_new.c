@@ -143,6 +143,16 @@ void* temp_monitor(void* ptr) {
 
 
 //---- THREADS ----
+// -- Level thread--
+void init_level_thread(){
+    pthread_t levels_threads [LEVELS];
+    int level[LEVELS];
+
+    for (int i = 0; i < LEVELS; i++){
+		level[i] = i;
+		pthread_create(&levels_threads[i], NULL, temp_monitor, &level[i]);    }
+}
+
 //---- PROCESS FUNCTION ----
 void process(){
 }
