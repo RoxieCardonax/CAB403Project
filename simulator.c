@@ -130,7 +130,7 @@ void *remove_from_entry_queue(void *args)
         printf("%s", removeFromQueue(&queues[num]));
         // free mem
         // free(removed);
-
+        //
         // Free conditional
         pthread_cond_signal(&shm->entrys[num].LPR_cond);
     }
