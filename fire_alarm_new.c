@@ -66,16 +66,14 @@ int curr_temp[LEVELS][MEDIAN_WINDOW];
 
 void smooth_temp(int a[], int n);
 void prn_array(char* s, int a[], int n);
-void swap(int *p, int *q);
-
 
 //---- SWAP FUNCTION ----
-void swap(int *p, int *q)
+void swap(int p, int q)
 {
     int tmp;
-    tmp = *p;
-    *p = *q;
-    *q = tmp;
+    tmp = p;
+    p = q;
+    q = tmp;
 }
 
 //---- TEMP MONITOR FUNCTION ----
@@ -115,21 +113,20 @@ void* temp_monitor(void* ptr) {
 			int n = sizeof(temporary_list) / sizeof(temporary_list[0]);
             for (int i = 0; i < n-1; i++){
                 // Find minimum
-                min_i = i;
+                int min_i = i;
 
-                for (j = i+1; j < n; j++){
+                for (int j = i+1; j < n; j++){
                     if (temporary_list[j]< temporary_list[min_i]){
                         min_i = j;
                     }
                 }
-                temp = swap(temporary_list[min_i],temporary_list[i]);
+                temperature = swap(temporary_list[min_i],temporary_list[i]);
             }
             //-- Find Median--
             median_temp = temporary_list[2];
 
-            median_list[rep] = medianTemp;
+            median_list[rep] = median_temp;
             rep++;
-
 
         }
     }
