@@ -1,8 +1,18 @@
 {
+<<<<<<< HEAD
     "files.associations": {
         "generateplate.h": "c",
         "queue.h": "c",
         "hashtable.h": "c",
         "time.h": "c"
     }
+=======
+        "files.associations": {
+                "generateplate.h": "c",
+                "hashtable.h": "c",
+                "queue.h": "c",
+                "shared_mem.h": "c",
+                "spawn_cars.h": "c"
+        }
+>>>>>>> 44685f813e35db57c096d8e87bb68cf1b3292436
 }

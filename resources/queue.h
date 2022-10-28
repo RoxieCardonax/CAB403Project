@@ -52,9 +52,9 @@ void initQueue(queue *queue)
 
     // Set variables to 0 and NULL
 
-    queue->rear = malloc(sizeof(queue));
+    queue->rear = NULL;
 
-    queue->front = malloc(sizeof(queue));
+    queue->front = NULL;
 
     queue->count = 0;
 }
@@ -166,18 +166,16 @@ void addToQueue(queue *queue, char *newData)
 
     // Increment count
 
-    queue->count++;
+    queue->count = queue->count + 1;
 }
 
 // Remove item from queue
 
-char *removeFromQueue(queue *queuePointer)
+char *removeFromQueue(queue *queue)
 
 {
 
-    queue *q = queuePointer;
-
-    if (!isEmpty(q))
+    if (!isEmpty(queue))
     {
 
         // Get item to be removed pointer to free
@@ -188,42 +186,38 @@ char *removeFromQueue(queue *queuePointer)
 
         // Get char array to return
 
-        removedItem = q->front;
+        removedItem = queue->front;
 
-        if (q->count == 1)
+        removedData = removedItem->data;
+
+        if (queue->count == 1)
         {
 
-            q->front = NULL;
+            queue->front = NULL;
 
             // Take 1 away from count
 
-            // free(removedItem);
+            free(removedItem);
 
-            removedData = removedItem->data;
-
-            q->count--;
+            queue->count--;
         }
         else
         {
 
             // Move queue
 
-            q->front = removedItem->next;
+            queue->front = removedItem->next;
 
             // Take 1 away from count
 
-            removedData = removedItem->data;
+            free(removedItem);
 
-            q->count--;
+            queue->count--;
         }
-
-        printf("\n%s\n", removedData);
 
         // Return char array from deallocated data
 
         return removedData;
-
-        free(removedItem);
     }
     else
     {
