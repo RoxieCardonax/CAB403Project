@@ -328,11 +328,10 @@ int main()
         }
     }
 
-    
     // Clean Up Threads and Shared Memory Mapping
 
     pthread_join(spawn_car_thread, NULL);
-    
+
     for (int i = 0; i < Num_Of_Entries + Num_Of_Exits; i++)
     {
         pthread_join(BGthreads[i], NULL);

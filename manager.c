@@ -47,8 +47,7 @@ void testBoomgate()
         threadSleep(1000); // Ten Milliseconds for car to drive in
     }
     // TEST BOOMGATE CLOSING
-    printf("LOWERING BOOMGATE...\n");
-    pthread_mutex_lock(&shm->exits[0].boomgate_mutex);
+    printf("LOWERING BOOMGATE...\n");    
     shm->exits[0].boomgate = 'L';
     pthread_cond_broadcast(&shm->exits[0].boomgate_cond);
     pthread_mutex_unlock(&shm->exits[0].boomgate_mutex);
@@ -128,7 +127,7 @@ int main()
      } 
 
     // USED TO TEST BOOMGATES. RUN THIS WITH SIM RUNNING ALREADY
-    // testBoomgate();
+     testBoomgate();
 
     if ((munmap(shm, SHMSZ)) == -1)
     {
