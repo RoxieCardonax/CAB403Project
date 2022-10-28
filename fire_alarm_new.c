@@ -122,31 +122,27 @@ void* temp_monitor(void* ptr) {
             median_list[rep] = median_temp;
             rep++;
         }
-    }
-}
-
-//---- FIRE DETECTION FUNCTION ---- THERE'S AN ERROR HERE DUE TO MY ARRAY REFERENCING
-void fire_detection(int rep, int median_list[]){
-    int fixed_temp_count = 0;
-    median_temp = median_list[rep];
-    //-- Fire detection for smoothed temps over threshold
-    for (int i =0; i < TEMPCHANGE_WINDOW; i++){
-        if (median_list[rep][i] >= FIXED_TEMP){
-            fixed_temp_count++;
+        // Fire detection portion of code
+        fixed_temp_count = 0;
+        //-- Fire detection for smoothed temps over threshold
+        for (int i =0; i < TEMPCHANGE_WINDOW; i++){
+            if (median_list[i] >= FIXED_TEMP){
+                fixed_temp_count++;
+            }
+        }
+        if (fixed_temp_count >= TEMPCHANGE_WINDOW*0.9){
+            alarm_active = 1; //TRUE - FIRE IS DETECTED
+        }
+        //Fire detection by temperature rise
+        if (median_list[30] - median_list[0] > 8){
+            alarm_active = 1; //TRUE - FIRE IS DETECTED
         }
     }
-    if (fixed_temp_count >= TEMPCHANGE_WINDOW*0.9){
-        alarm_active = 1; //TRUE - FIRE IS DETECTED
-    }
-
-    //Fire detection by temperature rise
-    if (median_list[30] - median_list[0] > 8){
-        alarm_active = 1; //TRUE - FIRE IS DETECTED
-
-    }
-
+    usleep(2000);
 }
-//C
+
+
+//---- THREADS ----
 //---- PROCESS FUNCTION ----
 void process(){
 }
