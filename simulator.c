@@ -221,12 +221,17 @@ void *remove_from_entry_queue(void *args)
         pthread_cond_wait(&shm->entrys[num].boomgate_cond, &shm->entrys[num].LPR_mutex);
 
         // temp sleep
+<<<<<<< HEAD
         threadSleep(2);
+=======
+        threadsleep(2);
+>>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
 
         // Allocate memory for removed car
         char *removed = malloc(sizeof(char) * 6);
         if (queues[num].count != 0)
         {
+<<<<<<< HEAD
 
             // Lock queues mutex
             pthread_mutex_lock(&queues_mutex);
@@ -248,6 +253,13 @@ void *remove_from_entry_queue(void *args)
 
             // Unlock LPR mutex
             pthread_mutex_unlock(&shm->entrys[num].LPR_mutex);
+=======
+            pthread_mutex_lock(&queues_mutex);
+            printf("\nRemoving from entry queue:\n%s\n\n", removeFromQueue(&queues[num]));
+            // Free conditional
+            pthread_cond_signal(&shm->entrys[num].LPR_cond);
+            pthread_mutex_unlock(&queues_mutex);
+>>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
         }
     }
 }
@@ -299,7 +311,11 @@ void *spawn_cars(void *args)
         int interval = randomNumber();
         int counter = 0;
         // Sleep for millisecond (Keeps thread asleep majority of the time)
+<<<<<<< HEAD
         threadSleep(interval);
+=======
+        threadsleep(interval);
+>>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
 
         // Increase counter
         counter++;
@@ -331,7 +347,11 @@ void *spawn_cars(void *args)
             // Time is at interval, span new car
             int thread_num = randomNumber() % 5;
             addToQueue(&q[thread_num], numberPlate);
+<<<<<<< HEAD
             // pthread_cond_signal(&shm->entrys[thread_num].LPR_cond);
+=======
+            pthread_cond_signal(&shm->entrys[thread_num].LPR_cond);
+>>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
             counter = 0;
             pthread_mutex_unlock(&queues_mutex);
         }

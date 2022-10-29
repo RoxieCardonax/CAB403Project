@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <bits/mman.h>
 
 int shm_fd;
 volatile void *shm;
@@ -164,7 +166,7 @@ int main()
 
     pthread_t *threads = malloc(sizeof(pthread_t) * LEVELS);
 
-    for (int i = 0; i < LEVELS; i++)
+    for (uintptr_t i = 0; i < LEVELS; i++)
     {
         pthread_create(threads + i, NULL, (void *(*)(void *))tempmonitor, (void *)i);
     }
@@ -195,13 +197,13 @@ emergency_mode:
     {
         int addr = 288 * i + 96;
         volatile struct boomgate *bg = shm + addr;
-        pthread_create(boomgatethreads + i, NULL, openboomgate, bg);
+        pthread_create(boomgatethreads + i, NULL, openboomgate, (struct boomgate *)bg);
     }
     for (int i = 0; i < EXITS; i++)
     {
         int addr = 192 * i + 1536;
         volatile struct boomgate *bg = shm + addr;
-        pthread_create(boomgatethreads + ENTRANCES + i, NULL, openboomgate, bg);
+        pthread_create(boomgatethreads + ENTRANCES + i, NULL, openboomgate, (struct boomgate *)bg);
     }
 
     // Show evacuation message on an endless loop
@@ -214,10 +216,10 @@ emergency_mode:
             {
                 int addr = 288 * i + 192;
                 volatile struct parkingsign *sign = shm + addr;
-                pthread_mutex_lock(&sign->m);
+                pthread_mutex_lock((pthread_mutex_t *)&sign->m);
                 sign->display = *p;
-                pthread_cond_broadcast(&sign->c);
-                pthread_mutex_unlock(&sign->m);
+                pthread_cond_broadcast((pthread_cond_t *)&sign->c);
+                pthread_mutex_unlock((pthread_mutex_t *)&sign->m);
             }
             usleep(20000);
         }
