@@ -132,3 +132,5 @@ char *generateNumberPlate()
     }
     return NULL;
 };
+
+#endif

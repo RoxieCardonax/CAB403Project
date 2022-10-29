@@ -1,4 +1,3 @@
-
 #ifndef SHARED_MEM
 #define SHARED_MEM
 
@@ -23,7 +22,6 @@
 /*
 *	//////////////////ENTRY Offsets/////////////////
 	///USE THESE VALUES AND REPLACE offset placeholder above
-
 	288 - Mutex_t LPR
 	40 + 288 - Mutex Condition LPR
 	88 + 288 - LPR Values
@@ -33,7 +31,6 @@
 	192 + 288 pthread_mutex_t for information sign
 	232 + 288 pthread_cond_t for information sign
 	280 + 288 character display for information sign
-
 	//////////////////EXIT Offsets//////////////////
 	1440 + 192 pthread_mutex_t for LPR
 	1480 + 40 + 192 pthread_cond_t for LPR
@@ -41,9 +38,7 @@
 	1536 + 96 + 192 pthread_mutex_t for boom gate
 	1576 + 136 + 192 pthread_cond_t for boom gate
 	1624 + 184 + 192 status character for boom gate
-
 	///////////////////Level Offsets/////////////////
-
 	2400 + 104 pthread_mutex_t for LPR
 	2440 + 40 + 104 pthread_cond_t for LPR
 	2488 + 88 + 104 license plate reading

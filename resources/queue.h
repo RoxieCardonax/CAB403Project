@@ -65,8 +65,6 @@ int isEmpty(queue *queue)
 
 {
 
-    printf("This is bad");
-
     // return value based on count
 
     return (queue->count == 0);
@@ -128,7 +126,7 @@ void addToQueue(queue *queue, char *newData)
 
     temp = (item *)malloc(sizeof(item));
 
-    temp->data = malloc(sizeof(char) * 7);
+    temp->data = malloc(sizeof(char) * 6);
 
     temp->next = malloc(sizeof(item));
 
@@ -168,7 +166,7 @@ void addToQueue(queue *queue, char *newData)
 
     // Increment count
 
-    queue->count++;
+    queue->count = queue->count + 1;
 }
 
 // Remove item from queue
@@ -184,11 +182,13 @@ char *removeFromQueue(queue *queue)
 
         item *removedItem = malloc(sizeof(item));
 
-        char *removedData = malloc(sizeof(char) * 7);
+        char *removedData = malloc(sizeof(char) * 6);
 
         // Get char array to return
 
         removedItem = queue->front;
+
+        removedData = removedItem->data;
 
         if (queue->count == 1)
         {

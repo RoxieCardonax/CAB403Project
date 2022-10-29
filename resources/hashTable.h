@@ -1,3 +1,4 @@
+
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -10,6 +11,8 @@ struct car
 {
     // Plate details - plate used as key
     char *plate;
+
+    time_t *entry_time;
 
     // Next parked car in hashtable
     car_t *next;
@@ -29,6 +32,7 @@ struct htable
 void car_print(car_t *car)
 {
     printf("plate=%s", car->plate);
+    printf("entry time=%s", car->entry_time);
 };
 
 // Initialize the hashtable
@@ -102,15 +106,18 @@ bool htable_add(htable_t *hashTable, char *plate)
         return false;
     }
 
+    // printf("%s", plate);
+
     // Get bucket
     size_t bucket = htable_index(hashTable, plate);
-    printf("%s", plate);
     // Shuffle current head along
     newHead->next = hashTable->buckets[bucket];
     // Assign value to newHead
     newHead->plate = plate;
-    // Assign new car to bucket
-    hashTable->buckets[bucket] = newHead;
+    // Assign time value
+    newHead->entry_time = localtime()
+                          // Assign new car to bucket
+                          hashTable->buckets[bucket] = newHead;
 
     return true;
 };
@@ -175,6 +182,7 @@ void htable_delete(htable_t *hashTable, char *plate)
             // Free allocated memory
             free(current);
             free(plate);
+            free(entry_time);
             break;
         }
 

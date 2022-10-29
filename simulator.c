@@ -28,6 +28,8 @@ pthread_cond_t queues_cond;
 int threadSleep(long tms)
 {
     usleep(tms * 1000);
+
+    return 0;
 }
 
 // Thread information struct
@@ -94,7 +96,6 @@ void *runEntryBG(void *arg)
 void *runExitBG(void *arg)
 {
     int num = *(int *)arg; // EXIT NUM
-
     for (;;)
 
     {
@@ -201,7 +202,6 @@ void *remove_from_entry_queue(void *args)
 {
 
     // Listen to boom gate cond
-    printf("\n\na threads\n\n");
 
     // Get info from args
     queue *queues = ((thread_info_t *)args)->queues;
@@ -217,20 +217,38 @@ void *remove_from_entry_queue(void *args)
 
     while (1)
     {
-
         // Wait for LPR condition, unlock mutex until ready
-        pthread_cond_wait(&shm->entrys[num].LPR_cond, &shm->entrys[num].LPR_mutex);
+        pthread_cond_wait(&shm->entrys[num].boomgate_cond, &shm->entrys[num].LPR_mutex);
 
         // temp sleep
-        sleep(2);
+        threadSleep(2);
 
         // Allocate memory for removed car
         char *removed = malloc(sizeof(char) * 6);
+        if (queues[num].count != 0)
+        {
 
-        printf("%s", removeFromQueue(&queues[num]));
+            // Lock queues mutex
+            pthread_mutex_lock(&queues_mutex);
 
-        // Free conditional
-        pthread_cond_signal(&shm->entrys[num].LPR_cond);
+            // remove from queue
+            removed = removeFromQueue(&queues[num]);
+
+            // Assign removed value to LPR
+            strncpy(shm->entrys[num].lpr, removed, 6);
+
+            // Signal LPR cond of that entry
+            pthread_cond_signal(&shm->entrys[num].LPR_cond);
+
+            // Print removed - get rid  of this if needed
+            printf("\nRemoving from entry queue:\n%s\n\n", removed);
+
+            // Unlock queues mutex
+            pthread_mutex_unlock(&queues_mutex);
+
+            // Unlock LPR mutex
+            pthread_mutex_unlock(&shm->entrys[num].LPR_mutex);
+        }
     }
 }
 // Spawn car thread
@@ -264,18 +282,24 @@ void *spawn_cars(void *args)
 
         // Create thread for listening to LPR_cond variables
         pthread_create(&bg_listener_thread, NULL, remove_from_entry_queue, ti);
+        // pthread_join(bg_listener_thread, NULL);
     }
 
     parking_data_t *shm = args;
 
-    // Loop constantly
+    // Init plates hash table for keeping track of allocated plates
+    htable_t *plates_used = (htable_t *)malloc(sizeof(htable_t));
+
+    // Init hashtable
+    htable_init(plates_used, (size_t)Num_Of_Entries);
+
     while (1)
     {
         // Need to generate new car at random queue every 1-100ms
         int interval = randomNumber();
         int counter = 0;
         // Sleep for millisecond (Keeps thread asleep majority of the time)
-        sleep(interval / 1000);
+        threadSleep(interval);
 
         // Increase counter
         counter++;
@@ -284,11 +308,32 @@ void *spawn_cars(void *args)
         if (counter == interval)
         {
             // Get number plate to add
-            char *numberPlate = generateNumberPlate();
+            char *numberPlate;
+            ;
+            while (1)
+            {
+                numberPlate = generateNumberPlate();
+
+                if (htable_find(plates_used, numberPlate) == NULL)
+                {
+                    htable_add(plates_used, numberPlate);
+                    // Break and continue
+                    break;
+                }
+                // reloop and reallocate number plate
+                else
+                {
+                    free(numberPlate);
+                    continue;
+                }
+            }
+            pthread_mutex_lock(&queues_mutex);
             // Time is at interval, span new car
-            addToQueue(&q[randomNumber() % 5], numberPlate);
-            pthread_cond_broadcast(&shm->entrys[randomNumber() % 5].LPR_cond);
+            int thread_num = randomNumber() % 5;
+            addToQueue(&q[thread_num], numberPlate);
+            // pthread_cond_signal(&shm->entrys[thread_num].LPR_cond);
             counter = 0;
+            pthread_mutex_unlock(&queues_mutex);
         }
     }
 }
@@ -297,7 +342,6 @@ int main()
 {
 
     parking_data_t parking; // Initilize parking segment
-    parking_data_t *shm;    // Holds Mapped Shm Address
 
     // Create thread for adding cars to queues
     pthread_t spawn_car_thread;
@@ -305,12 +349,13 @@ int main()
     // Map Parking Segment to Memory and retrive address.
     shm = create_shared_memory(&parking);
 
-    // USED TO TEST AND VALIDATE MEMORY SEGMENT
+    // Initialise Mutex/Condition Variables and Set Default Values for Shared Memory
+    setDefaultValues(shm);
 
     // Create thread for each entry
     pthread_create(&spawn_car_thread, NULL, spawn_cars, shm);
 
-    // Create BoomGate Threads
+    // // Create BoomGate Threads
     pthread_t *threads = malloc(sizeof(pthread_t) * (Num_Of_Entries + Num_Of_Exits));
     createBoomGateThreads(shm, threads);
 

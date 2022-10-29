@@ -11,9 +11,6 @@
 #include "hashTable.h"
 #include <stdio.h>
 
-
-
-
 ///////Test Entrance/Exit Boomgate threads/////////////////
 void *testEntranceBG(void *arg)
 {

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -8,8 +9,6 @@
 #include <stdbool.h>
 #include "resources/shared_mem.h"
 #include "resources/generatePlate.h"
-#include "resources/hashTable.h"
-#include <stdio.h>
 #include "resources/test.h"
 
 int fd;
@@ -48,7 +47,6 @@ void testBoomgate()
     }
     // TEST BOOMGATE CLOSING
     printf("LOWERING BOOMGATE...\n");
-    pthread_mutex_lock(&shm->exits[0].boomgate_mutex);
     shm->exits[0].boomgate = 'L';
     pthread_cond_broadcast(&shm->exits[0].boomgate_cond);
     pthread_mutex_unlock(&shm->exits[0].boomgate_mutex);
@@ -92,43 +90,43 @@ int main()
     // Map Parking Segment to Memory and retrive address.
     shm = read_shared_memory(&parking);
 
-    /*  // USED TO DISPLAY STATUS
-     for (;;)
-     {
-
-         // Display Entrances
-         printf("----------------ENTRANCES--------------\n");
-         printf("LEVEL 1 LPR: %c     |     LEVEL 1 BG: %c\n", shm->entrys[0].lpr, shm->entrys[0].boomgate);
-         printf("LEVEL 2 LPR: %c     |     LEVEL 2 BG: %c\n", shm->entrys[1].lpr, shm->entrys[1].boomgate);
-         printf("LEVEL 3 LPR: %c     |     LEVEL 3 BG: %c\n", shm->entrys[2].lpr, shm->entrys[2].boomgate);
-         printf("LEVEL 4 LPR: %c     |     LEVEL 4 BG: %c\n", shm->entrys[3].lpr, shm->entrys[3].boomgate);
-         printf("LEVEL 5 LPR: %c     |     LEVEL 5 BG: %c\n", shm->entrys[4].lpr, shm->entrys[4].boomgate);
-         printf("---------------------------------------\n");
-
-         // Display Exits
-         printf("------------------EXITS----------------\n");
-         printf("LEVEL 1 LPR: %c     |     LEVEL 1 BG: %c\n", shm->exits[0].lpr, shm->exits[0].boomgate);
-         printf("LEVEL 2 LPR: %c     |     LEVEL 2 BG: %c\n", shm->exits[1].lpr, shm->exits[1].boomgate);
-         printf("LEVEL 3 LPR: %c     |     LEVEL 3 BG: %c\n", shm->exits[2].lpr, shm->exits[2].boomgate);
-         printf("LEVEL 4 LPR: %c     |     LEVEL 4 BG: %c\n", shm->exits[3].lpr, shm->exits[3].boomgate);
-         printf("LEVEL 5 LPR: %c     |     LEVEL 5 BG: %c\n", shm->exits[4].lpr, shm->exits[4].boomgate);
-         printf("---------------------------------------\n");
-
-         // Display Temperature
-         printf("              ----TEMP---\n");
-         printf("              LEVEL 1 : %dC\n", shm->levels[0].temp);
-         printf("              LEVEL 2 : %dC\n", shm->levels[1].temp);
-         printf("              LEVEL 3 : %dC\n", shm->levels[2].temp);
-         printf("              LEVEL 4 : %dC\n", shm->levels[3].temp);
-         printf("              LEVEL 5 : %dC\n", shm->levels[4].temp);
-         printf("---------------------------------------\n");
-
-         threadSleep(50); // Updates Every 'x' amount of milliseconds
-         system("clear");
-     } */
-
     // USED TO TEST BOOMGATES. RUN THIS WITH SIM RUNNING ALREADY
-    // testBoomgate();
+
+    // USED TO DISPLAY STATUS
+    for (;;)
+    {
+
+        // Display Entrances
+        printf("----------------ENTRANCES--------------\n");
+        printf("LEVEL 1 LPR: %c     |     LEVEL 1 BG: %c\n", shm->entrys[0].lpr, shm->entrys[0].boomgate);
+        printf("LEVEL 2 LPR: %c     |     LEVEL 2 BG: %c\n", shm->entrys[1].lpr, shm->entrys[1].boomgate);
+        printf("LEVEL 3 LPR: %c     |     LEVEL 3 BG: %c\n", shm->entrys[2].lpr, shm->entrys[2].boomgate);
+        printf("LEVEL 4 LPR: %c     |     LEVEL 4 BG: %c\n", shm->entrys[3].lpr, shm->entrys[3].boomgate);
+        printf("LEVEL 5 LPR: %c     |     LEVEL 5 BG: %c\n", shm->entrys[4].lpr, shm->entrys[4].boomgate);
+        printf("---------------------------------------\n");
+
+        // Display Exits
+        printf("------------------EXITS----------------\n");
+        printf("LEVEL 1 LPR: %c     |     LEVEL 1 BG: %c\n", shm->exits[0].lpr, shm->exits[0].boomgate);
+        printf("LEVEL 2 LPR: %c     |     LEVEL 2 BG: %c\n", shm->exits[1].lpr, shm->exits[1].boomgate);
+        printf("LEVEL 3 LPR: %c     |     LEVEL 3 BG: %c\n", shm->exits[2].lpr, shm->exits[2].boomgate);
+        printf("LEVEL 4 LPR: %c     |     LEVEL 4 BG: %c\n", shm->exits[3].lpr, shm->exits[3].boomgate);
+        printf("LEVEL 5 LPR: %c     |     LEVEL 5 BG: %c\n", shm->exits[4].lpr, shm->exits[4].boomgate);
+        printf("---------------------------------------\n");
+
+        // Display Temperature
+        printf("              ----TEMP---\n");
+        printf("              LEVEL 1 : %dC\n", shm->levels[0].temp);
+        printf("              LEVEL 2 : %dC\n", shm->levels[1].temp);
+        printf("              LEVEL 3 : %dC\n", shm->levels[2].temp);
+        printf("              LEVEL 4 : %dC\n", shm->levels[3].temp);
+        printf("              LEVEL 5 : %dC\n", shm->levels[4].temp);
+        printf("---------------------------------------\n");
+
+        threadSleep(50); // Updates Every 'x' amount of milliseconds
+        system("clear");
+        testBoomgate();
+    }
 
     if ((munmap(shm, SHMSZ)) == -1)
     {
