@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+pthread_mutex_t htable_mutex;
+
 // Hashtable for parked cars
 typedef struct car car_t;
 struct car
@@ -31,18 +33,19 @@ struct htable
 // Print car for testing
 void car_print(car_t *car)
 {
-    printf("plate=%s", car->plate);
-    printf("entry time=%s", car->entry_time);
+    printf("plate=%s, Entry time:%s", car->plate, car->entry_time);
 };
 
 // Initialize the hashtable
 bool htable_init(htable_t *hashTable, size_t n)
 {
+    pthread_mutex_lock(&htable_mutex);
     // Allocate size of hashtable - how many buckets
     hashTable->size = n;
     // Reset buckets to be 0's
-    hashTable->buckets = (car_t **)calloc(n, sizeof(car_t *));
+    hashTable->buckets = (car_t **)calloc(n, sizeof(car_t) * n);
     // Test if calloc has reset buckets and return
+    pthread_mutex_unlock(&htable_mutex);
     return hashTable->buckets != 0;
 };
 
@@ -96,7 +99,7 @@ car_t *htable_find(htable_t *hashTable, char *key)
 // POST: htable_find(hashTable, key) != NULL OR return false
 bool htable_add(htable_t *hashTable, char *plate)
 {
-
+    pthread_mutex_lock(&htable_mutex);
     // Create new head for hashtable bucket
     car_t *newHead = (car_t *)malloc(sizeof(car_t));
 
@@ -106,7 +109,7 @@ bool htable_add(htable_t *hashTable, char *plate)
         return false;
     }
 
-    // printf("%s", plate);
+    printf("%s", plate);
 
     // Get bucket
     size_t bucket = htable_index(hashTable, plate);
@@ -115,10 +118,10 @@ bool htable_add(htable_t *hashTable, char *plate)
     // Assign value to newHead
     newHead->plate = plate;
     // Assign time value
-    newHead->entry_time = localtime()
-                          // Assign new car to bucket
-                          hashTable->buckets[bucket] = newHead;
-
+    // newHead->entry_time = localtime()
+    // Assign new car to bucket
+    hashTable->buckets[bucket] = newHead;
+    pthread_mutex_unlock(&htable_mutex);
     return true;
 };
 
@@ -155,7 +158,7 @@ void htable_print(htable_t *hashTable)
 // POST: htabl_find(hashTable, key) == NULL
 void htable_delete(htable_t *hashTable, char *plate)
 {
-
+    pthread_mutex_lock(&htable_mutex);
     // Init variables for head of bucket, current and previous for looping through table
     car_t *head = htable_bucket(hashTable, plate);
     // Current begins at head of bucket
@@ -181,8 +184,8 @@ void htable_delete(htable_t *hashTable, char *plate)
 
             // Free allocated memory
             free(current);
-            free(plate);
-            free(entry_time);
+            free(current->plate);
+            free(current->entry_time);
             break;
         }
 
@@ -190,6 +193,7 @@ void htable_delete(htable_t *hashTable, char *plate)
         previous = current;
         current = current->next;
     }
+    pthread_mutex_unlock(&htable_mutex);
 };
 
 // htable_destroy

@@ -9,7 +9,6 @@
 #include <fcntl.h>
 #include <bits/mman.h>
 
-
 int shm_fd;
 volatile void *shm;
 
@@ -204,7 +203,7 @@ emergency_mode:
     {
         int addr = 192 * i + 1536;
         volatile struct boomgate *bg = shm + addr;
-        pthread_create(boomgatethreads + ENTRANCES + i, NULL, openboomgate,(struct boomgate *) bg);
+        pthread_create(boomgatethreads + ENTRANCES + i, NULL, openboomgate, (struct boomgate *)bg);
     }
 
     // Show evacuation message on an endless loop

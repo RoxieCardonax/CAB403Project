@@ -1,3 +1,6 @@
+#ifndef GENERATE_PLATE
+#define GENERATE_PLATE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -129,8 +132,5 @@ char *generateNumberPlate()
     }
     return NULL;
 };
-<<<<<<< HEAD
 
 #endif
-=======
->>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd

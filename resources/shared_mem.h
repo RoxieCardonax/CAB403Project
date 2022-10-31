@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-=======
-
-
->>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
 #ifndef SHARED_MEM
 
 #define SHARED_MEM
@@ -32,12 +27,6 @@
 *	//////////////////ENTRY Offsets/////////////////
 
 	///USE THESE VALUES AND REPLACE offset placeholder above
-<<<<<<< HEAD
-=======
-
-
-
->>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
 	288 - Mutex_t LPR
 
 	40 + 288 - Mutex Condition LPR
@@ -55,12 +44,6 @@
 	232 + 288 pthread_cond_t for information sign
 
 	280 + 288 character display for information sign
-<<<<<<< HEAD
-=======
-
-
-
->>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
 	//////////////////EXIT Offsets//////////////////
 
 	1440 + 192 pthread_mutex_t for LPR
@@ -74,17 +57,7 @@
 	1576 + 136 + 192 pthread_cond_t for boom gate
 
 	1624 + 184 + 192 status character for boom gate
-<<<<<<< HEAD
 	///////////////////Level Offsets/////////////////
-=======
-
-
-
-	///////////////////Level Offsets/////////////////
-
-
-
->>>>>>> c2ea0cc0bc78ee9fb4285db17b54ec426c6993fd
 	2400 + 104 pthread_mutex_t for LPR
 
 	2440 + 40 + 104 pthread_cond_t for LPR
