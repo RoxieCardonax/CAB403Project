@@ -6,11 +6,18 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <fcntl.h> 
 #include <inttypes.h>
+#include <stdbool.h>
 //#include "hashTable.h"
 #include "shared_mem.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <sys/mman.h>
 // --------------------DEFINITIONS--------------------
 // Carpark format
 #define LEVELS  5   //Given from task - how many carpark levels there are
@@ -33,13 +40,13 @@
 #define SMOOTH_TEMPS 5
 
 //Other notes - Sensor has to read values every 2 milliseconds
-
+int shm_fd;
 
 // --------------------SHARED MEMORY--------------------
 //Why do we need shared memory?
 //Each process has its own address space, if any process wants to communicate with some information from its own address space to other processes, 
 //then it is only possible with IPC techniques
-shared_mem_t *shm; 
+parking_data_t *shared_mem; 
 
 // initalize arrays for different temperature conditions 
 int smooth_temps[LEVELS][TEMPCHANGE_WINDOW]; // Array of Temperatures for each level
@@ -71,7 +78,7 @@ void prn_array(char* s, int a[], int n);
 void* temp_monitor(void* ptr) {
 	int thread = *((int*)ptr);
 	int temperature;
-	temperature = shared_mem_t->levels[thread].temp;
+	temperature = shared_mem->levels[thread].temp;
 
     while(temperature !=0){
         //Initialise lists
@@ -86,13 +93,13 @@ void* temp_monitor(void* ptr) {
 
         //-- Evaluate First 5 Temps and store in list--
         for (int i = 0; i<LEVELS; i++){
-            temperature = shared_mem_t->levels[thread].temp;
+            temperature = shared_mem->levels[thread].temp;
             temp_list[i] = temperature;
         }
 
         //-- Evaluate temps for smoothing--
         for (count = START_COUNT; count < TEMP_COUNT; count++){
-            temperature = shared_mem_t->levels[thread].temp;
+            temperature = shared_mem->levels[thread].temp;
             temp_list[count] = temperature;
 
             int temporary_list[SMOOTH_TEMPS];
@@ -137,13 +144,15 @@ void* temp_monitor(void* ptr) {
         if (median_list[30] - median_list[0] > 8){
             alarm_active = 1; //TRUE - FIRE IS DETECTED
         }
+
+        usleep(2000);
     }
-    usleep(2000);
+    return NULL;
 }
 
 
 //---- THREADS ----
-// -- Level thread--
+// -- Levels thread--
 void init_level_thread(){
     pthread_t levels_threads [LEVELS];
     int level[LEVELS];
@@ -153,6 +162,60 @@ void init_level_thread(){
 		pthread_create(&levels_threads[i], NULL, temp_monitor, &level[i]);    }
 }
 
+//---- MUTEX ----
+// -- fire mutex ---
+
+
+//---- SHARED MEMORY ----
+// void init_shm()
+// {
+//     //SHARED MEMORY HERE
+//     shared_mem = malloc(sizeof(shared_mem_t));
+
+//     // CHECK IF SHARED MEMORY IS SETUO
+//     if (get_shared_object(shared_mem, SHARED_MEMORY, SHM_SIZE))
+//     {
+//         printf("SHARED MEMORY SETUP\n");
+//     }
+//     else
+//     {
+//         // error
+//         printf("SHARED MEMORY ERROR\n");
+//         exit(1);
+//     }
+// }
+
+// int init_shm(){
+//     /* Locate shared memory segment and attach the segment to the data space*/
+//      shared_mem = malloc(sizeof(shared_mem_t));
+
+//     if (get_shared_object(shared_mem, SHARED_MEMORY, SHM_SIZE))
+// 	{
+// 		perror("shm_open");
+// 		return 1;
+// 	}
+// 	if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
+// 	{
+// 		perror("mmap");
+// 		return 1;
+// 	}
+//     return 0;
+// }
+
+int init_shm(){
+	if ((shm_fd = shm_open(SHARED_MEMORY, O_RDWR, 0)) < 0)
+	{
+		perror("shm_open");
+		return 1;
+	}
+	if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
+	{
+		perror("mmap");
+		return 1;
+	}
+    return 0;
+
+}
 //---- PROCESS FUNCTION ----
 void process(){
 }
@@ -160,6 +223,12 @@ void process(){
 //---- MAIN ----
 int main(){
     //--STILL WORKING ON--
+    //Initialise Shared Memory
+    init_shm();
+
+    init_level_thread(); //Initialise Threads
+
+    process();
 
     return 0;
 }
