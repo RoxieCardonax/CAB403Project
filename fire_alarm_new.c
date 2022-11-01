@@ -9,8 +9,10 @@
 #include <fcntl.h> 
 #include <inttypes.h>
 #include <stdbool.h>
+
 //#include "hashTable.h"
 #include "shared_mem.h"
+#include "functions.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -18,6 +20,13 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+
+#include <sys/mman.h>
+#include <sys/stat.h>        /* For mode constants */
+#include <fcntl.h>           /* For O_* constants */
+
+int shm_open(const char *name, int oflag, mode_t mode);
+int shm_unlink(const char *name);
 // --------------------DEFINITIONS--------------------
 // Carpark format
 #define LEVELS  5   //Given from task - how many carpark levels there are
@@ -47,6 +56,7 @@ int shm_fd;
 //Each process has its own address space, if any process wants to communicate with some information from its own address space to other processes, 
 //then it is only possible with IPC techniques
 parking_data_t *shared_mem; 
+//shared_mem_t *shm = NULL;
 
 // initalize arrays for different temperature conditions 
 int smooth_temps[LEVELS][TEMPCHANGE_WINDOW]; // Array of Temperatures for each level
@@ -166,14 +176,14 @@ void init_level_thread(){
 // -- fire mutex ---
 
 
-//---- SHARED MEMORY ----
+//---- SHARED MEMORY ---- REVISIT
 // void init_shm()
 // {
 //     //SHARED MEMORY HERE
-//     shared_mem = malloc(sizeof(shared_mem_t));
+//     shm = malloc(sizeof(shared_mem_t));
 
 //     // CHECK IF SHARED MEMORY IS SETUO
-//     if (get_shared_object(shared_mem, SHARED_MEMORY, SHM_SIZE))
+//     if (get_shared_object(shm, SHARED_MEMORY, SHM_SIZE))
 //     {
 //         printf("SHARED MEMORY SETUP\n");
 //     }
@@ -185,25 +195,11 @@ void init_level_thread(){
 //     }
 // }
 
-// int init_shm(){
-//     /* Locate shared memory segment and attach the segment to the data space*/
-//      shared_mem = malloc(sizeof(shared_mem_t));
-
-//     if (get_shared_object(shared_mem, SHARED_MEMORY, SHM_SIZE))
-// 	{
-// 		perror("shm_open");
-// 		return 1;
-// 	}
-// 	if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
-// 	{
-// 		perror("mmap");
-// 		return 1;
-// 	}
-//     return 0;
-// }
-
 int init_shm(){
-	if ((shm_fd = shm_open(SHARED_MEMORY, O_RDWR, 0)) < 0)
+    /* Locate shared memory segment and attach the segment to the data space*/
+     shared_mem = malloc(sizeof(parking_data_t));
+
+    if (get_shared_object(shared_mem, SHARED_MEMORY, SHM_SIZE))
 	{
 		perror("shm_open");
 		return 1;
@@ -214,21 +210,86 @@ int init_shm(){
 		return 1;
 	}
     return 0;
+ }
 
-}
+// int init_shm(){
+// 	if ((shm_fd = shm_open(SHARED_MEMORY, O_RDWR, 0)) < 0)
+// 	{
+// 		perror("shm_open");
+// 		return 1;
+// 	}
+// 	if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
+// 	{
+// 		perror("mmap");
+// 		return 1;
+// 	}
+//     return 0;
+
+// }
 //---- PROCESS FUNCTION ----
 void process(){
+    while (shared_mem -> levels[0].temp >=0){
+        // ACTIVATE ALARM
+        if (alarm_active){
+            
+        }
+    }
 }
 
 //---- MAIN ----
-int main(){
-    //--STILL WORKING ON--
-    //Initialise Shared Memory
+
+int main()
+{
+	/* Locate shared memory segment and attach the segment to the data space*/
+	// if ((shm_fd = shm_open(SHARED_MEMORY, 0_CREAT| O_RDWR, 0)) < 0)
+	// {
+	// 	perror("shm_open");
+	// 	return 1;
+	// }
+	// if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
+	// {
+	// 	perror("mmap");
+	// 	return 1;
+	// }
     init_shm();
 
-    init_level_thread(); //Initialise Threads
+	/* Create a thread for each level */
+    init_level_thread();
 
-    process();
+	while(shared_mem->levels[0].temp >= 0) {
+		/* Activate Alarm */
+		if (alarm_active) {
+			fprintf(stderr, "*** ALARM ACTIVE ***\n");
 
-    return 0;
+			/* Handle the alarm system and open boom gates
+			   Activate alarms on all levels */
+			for (int i = 0; i < LEVELS; i++) {
+				shared_mem->levels[i].alarm = true;
+			}
+
+			/* Show evacuation message */
+			char* evacmessage = "EVACUATE ";
+			for (char* p = evacmessage; *p != '\0'; p++) {
+				for (int i = 0; i < LEVELS; i++) {
+					pthread_mutex_lock(&shared_mem->entrys[i].info_mutex);
+
+					//[i].SIGN.display = *p;
+					//pthread_cond_signal(&shared_mem->entrys[i].SIGN.condition);
+
+					//pthread_mutex_unlock(&shared_mem->entrys[i].SIGN.lock);
+				}
+				usleep(20000);
+			}
+			alarm_active = false;
+		}
+		// else {
+		// 	for (int i = 0; i < num_levels; ++i) {
+		// 		shared_mem->levels[i].alarm = false;
+		// 	}
+		// }
+		usleep(1000);
+	}
+
+	munmap(shared_mem, 2920);
+	close(shm_fd);
 }
