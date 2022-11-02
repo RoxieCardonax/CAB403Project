@@ -11,7 +11,7 @@
 #include <stdbool.h>
 
 //#include "hashTable.h"
-#include "shared_mem.h"
+#include "resources/shared_mem.h"
 // --------------------DEFINITIONS--------------------
 // Carpark format
 #define LEVELS  5   //Given from task - how many carpark levels there are
@@ -153,12 +153,15 @@ void init_level_thread(){
 
     for (int i = 0; i < LEVELS; i++){
 		level[i] = i;
-		pthread_create(&levels_threads[i], NULL, temp_monitor, &level[i]);    }
+		pthread_create(&levels_threads[i], NULL, temp_monitor, &level[i]);    
+    }
+    printf("Created levels thread.\n");
+
 }
 
 // SHARED MEMORY
 // Create Shared Memory segment on startup.
-void *create_shared_memory(parking_data_t *shm)
+void *create_shared_memory(parking_data_t *shared_mem)
 {
 
     // Check for previous memory segment.Remove if exits
@@ -181,16 +184,15 @@ void *create_shared_memory(parking_data_t *shm)
     };
 
     // Map memory segment to pysical address
-    shm = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    shared_mem = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-    if (shm == MAP_FAILED)
+    if (shared_mem == MAP_FAILED)
     {
         printf("FAILED TO MAP shared memory segment.\n");
     }
     printf("Created shared memory segment.\n");
-    printf("ADDRESS OF PARKING %p\n", shm);
 
-    return shm;
+    return shared_mem;
 }
 
 //---- MAIN ----
