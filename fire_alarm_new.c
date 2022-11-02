@@ -12,21 +12,6 @@
 
 //#include "hashTable.h"
 #include "shared_mem.h"
-#include "functions.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-
-#include <sys/mman.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
-
-int shm_open(const char *name, int oflag, mode_t mode);
-int shm_unlink(const char *name);
 // --------------------DEFINITIONS--------------------
 // Carpark format
 #define LEVELS  5   //Given from task - how many carpark levels there are
@@ -40,7 +25,7 @@ int shm_unlink(const char *name);
 #define FIXED_TEMP 58 // Given from task - Average temperature max limit
 #define RISE_TEMP 8 //Given from task - If temperature is 8+ hotter than the 30 most recent temperatures then the temperature is considered to be growing at a fast enough rate that there must be a fire
 
-#define SHARED_MEMORY "PARKING"
+#define SHARE_NAME "PARKING"
 #define SHM_SIZE 2920 
 
 #define START_COUNT 5
@@ -49,8 +34,8 @@ int shm_unlink(const char *name);
 #define SMOOTH_TEMPS 5
 
 //Other notes - Sensor has to read values every 2 milliseconds
-int shm_fd;
-
+int fd;
+int levels_num = 5;
 // --------------------SHARED MEMORY--------------------
 //Why do we need shared memory?
 //Each process has its own address space, if any process wants to communicate with some information from its own address space to other processes, 
@@ -70,7 +55,7 @@ int current_temp[LEVELS][MEDIAN_WINDOW]; // Array of Current Temperatures
 //Create Mutexes for when fire is detected
 pthread_mutex_t fire_mutex; //Mutex for fire (pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER)
 pthread_cond_t fire_condition; //Mutex for condition (pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;)
-int alarm_active = 0; // variable for fire 0 = false, 1 = true
+int alarm_active = false; // variable for fire 0 = false, 1 = true
 
 // --------------------SECTION: TEMP CALCS--------------------
 
@@ -81,22 +66,21 @@ int alarm_active = 0; // variable for fire 0 = false, 1 = true
 
 int curr_temp[LEVELS][MEDIAN_WINDOW];
 
-void smooth_temp(int a[], int n);
-void prn_array(char* s, int a[], int n);
-
 //---- TEMP MONITOR FUNCTION ----
 void* temp_monitor(void* ptr) {
 	int thread = *((int*)ptr);
 	int temperature;
 	temperature = shared_mem->levels[thread].temp;
 
+    // -- Monitor Temps (While loop)--
     while(temperature !=0){
+
         //Initialise lists
         int temp_list[35];
         int median_list [30];
 
         //Initialise other variables
-        int count = 0;
+        int count = 0; 
         int median_temp;
         int fixed_temp_count;
         int rep; 
@@ -172,90 +156,56 @@ void init_level_thread(){
 		pthread_create(&levels_threads[i], NULL, temp_monitor, &level[i]);    }
 }
 
-//---- MUTEX ----
-// -- fire mutex ---
+// SHARED MEMORY
+// Create Shared Memory segment on startup.
+void *create_shared_memory(parking_data_t *shm)
+{
 
+    // Check for previous memory segment.Remove if exits
+    shm_unlink(SHARE_NAME);
 
-//---- SHARED MEMORY ---- REVISIT
-// void init_shm()
-// {
-//     //SHARED MEMORY HERE
-//     shm = malloc(sizeof(shared_mem_t));
+    // Using share name and both creating and setting to read and write. Read and write for owner, group (0666). Fail if negative int is returned
+    int open;
+    open = shm_open(SHARE_NAME, O_CREAT | O_RDWR, 0666);
 
-//     // CHECK IF SHARED MEMORY IS SETUO
-//     if (get_shared_object(shm, SHARED_MEMORY, SHM_SIZE))
-//     {
-//         printf("SHARED MEMORY SETUP\n");
-//     }
-//     else
-//     {
-//         // error
-//         printf("SHARED MEMORY ERROR\n");
-//         exit(1);
-//     }
-// }
-
-int init_shm(){
-    /* Locate shared memory segment and attach the segment to the data space*/
-     shared_mem = malloc(sizeof(parking_data_t));
-
-    if (get_shared_object(shared_mem, SHARED_MEMORY, SHM_SIZE))
-	{
-		perror("shm_open");
-		return 1;
-	}
-	if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
-	{
-		perror("mmap");
-		return 1;
-	}
-    return 0;
- }
-
-// int init_shm(){
-// 	if ((shm_fd = shm_open(SHARED_MEMORY, O_RDWR, 0)) < 0)
-// 	{
-// 		perror("shm_open");
-// 		return 1;
-// 	}
-// 	if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
-// 	{
-// 		perror("mmap");
-// 		return 1;
-// 	}
-//     return 0;
-
-// }
-//---- PROCESS FUNCTION ----
-void process(){
-    while (shared_mem -> levels[0].temp >=0){
-        // ACTIVATE ALARM
-        if (alarm_active){
-            
-        }
+    if (open < 0)
+    {
+        printf("Failed to create memory segment");
     }
+    fd = open;
+
+    // Configure the size of the memory segment to 2920 bytes
+    if (ftruncate(fd, sizeof(parking_data_t)) == -1)
+    {
+        printf("Failed to set capacity of memory segment");
+    };
+
+    // Map memory segment to pysical address
+    shm = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+    if (shm == MAP_FAILED)
+    {
+        printf("FAILED TO MAP shared memory segment.\n");
+    }
+    printf("Created shared memory segment.\n");
+    printf("ADDRESS OF PARKING %p\n", shm);
+
+    return shm;
 }
 
 //---- MAIN ----
-
 int main()
-{
-	/* Locate shared memory segment and attach the segment to the data space*/
-	// if ((shm_fd = shm_open(SHARED_MEMORY, 0_CREAT| O_RDWR, 0)) < 0)
-	// {
-	// 	perror("shm_open");
-	// 	return 1;
-	// }
-	// if ((shared_mem = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
-	// {
-	// 	perror("mmap");
-	// 	return 1;
-	// }
-    init_shm();
+{   
+    //Initialise Shared Memory
+    parking_data_t parking; // Initilize parking segment
+    
+    // Map Parking Segment to Memory and retrive address.
+    shared_mem = create_shared_memory(&parking);
 
-	/* Create a thread for each level */
+	// Initialise level thread
     init_level_thread();
 
+    // Fire Process - in while loop
 	while(shared_mem->levels[0].temp >= 0) {
 		/* Activate Alarm */
 		if (alarm_active) {
@@ -273,23 +223,21 @@ int main()
 				for (int i = 0; i < LEVELS; i++) {
 					pthread_mutex_lock(&shared_mem->entrys[i].info_mutex);
 
-					//[i].SIGN.display = *p;
-					//pthread_cond_signal(&shared_mem->entrys[i].SIGN.condition);
+					shared_mem->entrys[i].display = *p;
+					pthread_cond_signal(&shared_mem->entrys[i].info_cond);
 
-					//pthread_mutex_unlock(&shared_mem->entrys[i].SIGN.lock);
+					pthread_mutex_unlock(&shared_mem->entrys[i].info_mutex);
 				}
 				usleep(20000);
 			}
 			alarm_active = false;
 		}
-		// else {
-		// 	for (int i = 0; i < num_levels; ++i) {
-		// 		shared_mem->levels[i].alarm = false;
-		// 	}
-		// }
+		else {
+			for (int i = 0; i < LEVELS; ++i) {
+				shared_mem->levels[i].alarm = false;
+			}
+		}
 		usleep(1000);
 	}
 
-	munmap(shared_mem, 2920);
-	close(shm_fd);
 }
