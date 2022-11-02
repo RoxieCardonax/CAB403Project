@@ -11,7 +11,7 @@
 #include <stdbool.h>
 
 //#include "hashTable.h"
-#include "resources/shared_mem.h"
+#include "resources/shm.h"
 // --------------------DEFINITIONS--------------------
 // Carpark format
 #define LEVELS  5   //Given from task - how many carpark levels there are
@@ -33,44 +33,24 @@
 
 #define SMOOTH_TEMPS 5
 
-//Other notes - Sensor has to read values every 2 milliseconds
 int fd;
 int levels_num = 5;
+int alarm_active = false; 
+
 // --------------------SHARED MEMORY--------------------
 //Why do we need shared memory?
 //Each process has its own address space, if any process wants to communicate with some information from its own address space to other processes, 
 //then it is only possible with IPC techniques
-parking_data_t *shared_mem; 
-//shared_mem_t *shm = NULL;
+parking_data_t *shm; 
 
-// initalize arrays for different temperature conditions 
-int smooth_temps[LEVELS][TEMPCHANGE_WINDOW]; // Array of Temperatures for each level
-int median_temp[LEVELS][MEDIAN_WINDOW]; // Array of Median Temperatures
-int current_temp[LEVELS][MEDIAN_WINDOW]; // Array of Current Temperatures 
 
-// --------------------MUTEX--------------------
-// Mutex is a lock that we set before using a shared resource and release after using it
-// When the lock is set, no other thread can access the locked region of code
-
-//Create Mutexes for when fire is detected
-pthread_mutex_t fire_mutex; //Mutex for fire (pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER)
-pthread_cond_t fire_condition; //Mutex for condition (pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;)
-int alarm_active = false; // variable for fire 0 = false, 1 = true
-
-// --------------------SECTION: TEMP CALCS--------------------
-
-#include <stdio.h>
-
-#define MEDIAN_WINDOW 5
-#define LEVELS 5
-
-int curr_temp[LEVELS][MEDIAN_WINDOW];
+// --------------------FUNCTIONS--------------------
 
 //---- TEMP MONITOR FUNCTION ----
 void* temp_monitor(void* ptr) {
 	int thread = *((int*)ptr);
 	int temperature;
-	temperature = shared_mem->levels[thread].temp;
+	temperature = shm->levels[thread].temp;
 
     // -- Monitor Temps (While loop)--
     while(temperature !=0){
@@ -87,13 +67,13 @@ void* temp_monitor(void* ptr) {
 
         //-- Evaluate First 5 Temps and store in list--
         for (int i = 0; i<LEVELS; i++){
-            temperature = shared_mem->levels[thread].temp;
+            temperature = shm->levels[thread].temp;
             temp_list[i] = temperature;
         }
 
         //-- Evaluate temps for smoothing--
         for (count = START_COUNT; count < TEMP_COUNT; count++){
-            temperature = shared_mem->levels[thread].temp;
+            temperature = shm->levels[thread].temp;
             temp_list[count] = temperature;
 
             int temporary_list[SMOOTH_TEMPS];
@@ -161,7 +141,7 @@ void init_level_thread(){
 
 // SHARED MEMORY
 // Create Shared Memory segment on startup.
-void *create_shared_memory(parking_data_t *shared_mem)
+void *create_shmory(parking_data_t *shm)
 {
 
     // Check for previous memory segment.Remove if exits
@@ -184,15 +164,15 @@ void *create_shared_memory(parking_data_t *shared_mem)
     };
 
     // Map memory segment to pysical address
-    shared_mem = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    shm = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-    if (shared_mem == MAP_FAILED)
+    if (shm == MAP_FAILED)
     {
         printf("FAILED TO MAP shared memory segment.\n");
     }
     printf("Created shared memory segment.\n");
 
-    return shared_mem;
+    return shm;
 }
 
 //---- MAIN ----
@@ -202,13 +182,13 @@ int main()
     parking_data_t parking; // Initilize parking segment
     
     // Map Parking Segment to Memory and retrive address.
-    shared_mem = create_shared_memory(&parking);
+    shm = create_shmory(&parking);
 
 	// Initialise level thread
     init_level_thread();
 
     // Fire Process - in while loop
-	while(shared_mem->levels[0].temp >= 0) {
+	while(shm->levels[0].temp >= 0) {
 		/* Activate Alarm */
 		if (alarm_active) {
 			fprintf(stderr, "*** ALARM ACTIVE ***\n");
@@ -216,19 +196,19 @@ int main()
 			/* Handle the alarm system and open boom gates
 			   Activate alarms on all levels */
 			for (int i = 0; i < LEVELS; i++) {
-				shared_mem->levels[i].alarm = true;
+				shm->levels[i].alarm = true;
 			}
 
 			/* Show evacuation message */
 			char* evacmessage = "EVACUATE ";
 			for (char* p = evacmessage; *p != '\0'; p++) {
 				for (int i = 0; i < LEVELS; i++) {
-					pthread_mutex_lock(&shared_mem->entrys[i].info_mutex);
+					pthread_mutex_lock(&shm->entrys[i].info_mutex);
 
-					shared_mem->entrys[i].display = *p;
-					pthread_cond_signal(&shared_mem->entrys[i].info_cond);
+					shm->entrys[i].display = *p;
+					pthread_cond_signal(&shm->entrys[i].info_cond);
 
-					pthread_mutex_unlock(&shared_mem->entrys[i].info_mutex);
+					pthread_mutex_unlock(&shm->entrys[i].info_mutex);
 				}
 				usleep(20000);
 			}
@@ -236,7 +216,7 @@ int main()
 		}
 		else {
 			for (int i = 0; i < LEVELS; ++i) {
-				shared_mem->levels[i].alarm = false;
+				shm->levels[i].alarm = false;
 			}
 		}
 		usleep(1000);
