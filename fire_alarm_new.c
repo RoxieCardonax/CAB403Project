@@ -38,7 +38,7 @@
 
 bool alarm_active = false;
 parking_data_t* shm;
-int shm_fd;
+int fd;
 
 void* temp_monitor(void* ptr) {
 	int thread = *((int*)ptr);
@@ -120,20 +120,46 @@ void* temp_monitor(void* ptr) {
 	return NULL;
 }
 
+void *create_shared_memory(parking_data_t *shm)
+{
+
+    // Check for previous memory segment.Remove if exits
+    shm_unlink(SHARE_NAME);
+
+    // Using share name and both creating and setting to read and write. Read and write for owner, group (0666). Fail if negative int is returned
+    int open;
+    open = shm_open(SHARE_NAME, O_CREAT | O_RDWR, 0666);
+
+    if (open < 0)
+    {
+        printf("Failed to create memory segment");
+    }
+    fd = open;
+
+    // Configure the size of the memory segment to 2920 bytes
+    if (ftruncate(fd, sizeof(parking_data_t)) == -1)
+    {
+        printf("Failed to set capacity of memory segment");
+    };
+
+    // Map memory segment to pysical address
+    shm = mmap(NULL, sizeof(parking_data_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+    if (shm == MAP_FAILED)
+    {
+        printf("FAILED TO MAP shared memory segment.\n");
+    }
+    printf("Created shared memory segment.\n");
+    return shm;
+}
 
 int main()
 {
-	/* Locate shared memory segment and attach the segment to the data space*/
-	if ((shm_fd = shm_open(SHARE_NAME, O_RDWR, 0)) < 0)
-	{
-		perror("shm_open");
-		return 1;
-	}
-	if ((shm = (parking_data_t*)mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0)) == (void*)-1)
-	{
-		perror("mmap");
-		return 1;
-	}
+    //Initialise Shared Memory
+    parking_data_t parking; // Initilize parking segment
+    
+    // Map Parking Segment to Memory and retrive address.
+    shm = create_shmory(&parking);
 
 	/* Create a thread for each level */
 	pthread_t threads[LEVELS];
@@ -179,6 +205,6 @@ int main()
 		usleep(1000);
 	}
 
-	munmap(shm, 2920);
-	close(shm_fd);
+	munmap(shm, SHM_SIZE);
+	close(fd);
 }
